@@ -2,10 +2,12 @@
 
 A Golang module to specify edifact document formats and to read from `io.Reader` into user-defined data structures. Inspired by `json.Unmarshal` and  `xml.Unmarshal`.
 
+# Forked from https://github.com/shogg/edifact, and package name changed to github.com/MaldivesPorts/edifact to install directly from github
+
 ## Installation
 Install with `go get`
 ```bash
-go get github.com/shogg/edifact
+go get github.com/MaldivesPorts/edifact
 ```
 ## Document specification
 Document specifications are written as `go` source code: `Msg` defines a message, `S` a segment and `SG` a segment group (a loop). `"UNA"` is a segment tag. `C` and `M` stand for conditional or mandatory. The last number specifies maximal repetitions.
@@ -13,7 +15,7 @@ Document specifications are written as `go` source code: `Msg` defines a message
 The notation is derived from here (example):
 https://service.unece.org/trade/untdid/d96a/trmd/desadv_s.htm
 ```go
-import "github.com/shogg/edifact/spec"
+import "github.com/MaldivesPorts/edifact/spec"
 
 var desadv = spec.Msg("DESADV",
 	spec.S("UNA", spec.C, 1),
@@ -71,7 +73,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shogg/edifact"
+	"github.com/MaldivesPorts/edifact"
 )
 
 var ediMessage = `

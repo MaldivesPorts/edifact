@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shogg/edifact/parse"
-	"github.com/shogg/edifact/spec"
+	"github.com/MaldivesPorts/edifact/parse"
+	"github.com/MaldivesPorts/edifact/spec"
 )
 
 var ediMessage1 = `

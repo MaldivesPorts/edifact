@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shogg/edifact"
-	"github.com/shogg/edifact/spec"
+	"github.com/MaldivesPorts/edifact"
+	"github.com/MaldivesPorts/edifact/spec"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

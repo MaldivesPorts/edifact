@@ -1,7 +1,7 @@
 package build
 
 import (
-	"github.com/shogg/edifact/spec"
+	"github.com/MaldivesPorts/edifact/spec"
 )
 
 // Handler edifact.Handler implementation to build arbitrary data structures.

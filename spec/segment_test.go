@@ -3,7 +3,7 @@ package spec_test
 import (
 	"testing"
 
-	"github.com/shogg/edifact/spec"
+	"github.com/MaldivesPorts/edifact/spec"
 )
 
 func TestReleaseChar(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/shogg/edifact"
+	"github.com/MaldivesPorts/edifact"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/shogg/edifact"
+	"github.com/MaldivesPorts/edifact"
 )
 
 var ediMessage = `

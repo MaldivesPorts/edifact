@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/shogg/edifact/spec"
+	"github.com/MaldivesPorts/edifact/spec"
 )
 
 // parser annotates parse errors with line and segment number.

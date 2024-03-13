@@ -1,6 +1,6 @@
 package parse
 
-import "github.com/shogg/edifact/spec"
+import "github.com/MaldivesPorts/edifact/spec"
 
 // Handler parse handler interface
 type Handler interface {

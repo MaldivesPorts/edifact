@@ -3,8 +3,8 @@ package edifact
 import (
 	"io"
 
-	"github.com/shogg/edifact/build"
-	"github.com/shogg/edifact/parse"
+	"github.com/MaldivesPorts/edifact/build"
+	"github.com/MaldivesPorts/edifact/parse"
 )
 
 // Unmarshaller interface for custom data type parsing.

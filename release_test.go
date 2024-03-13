@@ -3,7 +3,7 @@ package edifact_test
 import (
 	"testing"
 
-	"github.com/shogg/edifact"
+	"github.com/MaldivesPorts/edifact"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/shogg/edifact/spec"
+	"github.com/MaldivesPorts/edifact/spec"
 )
 
 type decodeTree map[string][]*decodeNode

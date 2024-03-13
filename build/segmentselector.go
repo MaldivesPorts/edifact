@@ -3,7 +3,7 @@ package build
 import (
 	"strings"
 
-	"github.com/shogg/edifact/spec"
+	"github.com/MaldivesPorts/edifact/spec"
 )
 
 // segmentSelector represents struct tag `edifact:""`.
