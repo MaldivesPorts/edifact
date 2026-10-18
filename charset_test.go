@@ -160,3 +160,76 @@ func TestFitCharsetAppliesToHeaders(t *testing.T) {
 		t.Errorf("Write changed the interchange: sender %q", ix.Sender())
 	}
 }
+
+// charsetFile is an interchange in the given syntax identifier and version
+// whose one message holds an FTX with text.
+func charsetFile(id, version, date, text string) string {
+	return "UNB+" + id + ":" + version + "+SENDER+RECIPIENT+" + date + ":1200+REF1'" +
+		"UNH+M1+TSTMSG:D:95B:UN'BGM++REF1+9'FTX+AAA+++" + text + "'UNT+4+M1'UNZ+1+REF1'"
+}
+
+func TestReadReportsCharacters(t *testing.T) {
+	for _, c := range []struct {
+		name, src, want string
+	}{
+		{"UNOA clean", charsetFile("UNOA", "2", "260101", "HANDLE WITH CARE"), ""},
+		{"UNOA lower case", charsetFile("UNOA", "2", "260101", "Handle"),
+			"warning: message 1 (M1), segment 3, FTX+AAA: element 4 component 1: 'a' (U+0061) is not in UNOA"},
+		{"UNOA high byte", charsetFile("UNOA", "2", "260101", "CAF\xc9"),
+			"warning: message 1 (M1), segment 3, FTX+AAA: element 4 component 1: byte 0xC9 is not in UNOA"},
+		{"UNOB lower case", charsetFile("UNOB", "2", "260101", "Handle with care"), ""},
+		{"UNOC control byte", charsetFile("UNOC", "3", "260101", "A\x01B"),
+			"warning: message 1 (M1), segment 3, FTX+AAA: element 4 component 1: byte 0x01 is not in UNOC"},
+		{"UNOW invalid UTF-8", charsetFile("UNOW", "4", "20260101", "A\xffB"),
+			"warning: message 1 (M1), segment 3, FTX+AAA: element 4 component 1: value is not valid UTF-8"},
+		{"UNB value", strings.Replace(charsetFile("UNOA", "2", "260101", "TEXT"), "SENDER", "sender", 1),
+			"warning: segment 1, UNB: element 2 component 1: 's' (U+0073) is not in UNOA"},
+		{"unsupported", charsetFile("UNOD", "2", "260101", "anything"),
+			"warning: segment 1, UNB: syntax identifier UNOD is not supported, so its values are read as they are"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			ix, err := Read(strings.NewReader(c.src))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got []string
+			for _, d := range ix.Diagnostics {
+				got = append(got, d.String())
+			}
+			if c.want == "" && len(got) != 0 || c.want != "" && (len(got) != 1 || got[0] != c.want) {
+				t.Errorf("diagnostics = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+func TestReadDecodesUNOC(t *testing.T) {
+	ix, err := Read(strings.NewReader(charsetFile("UNOC", "3", "260101", "Caf\xe9 \xc6SIR")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ix.Diagnostics) != 0 {
+		t.Errorf("diagnostics = %v", ix.Diagnostics)
+	}
+	if got := ix.Message(1).Find("FTX", "AAA").Element(4); got != "Café ÆSIR" {
+		t.Errorf("FTX = %q, want the Latin-1 bytes decoded", got)
+	}
+
+	var sb strings.Builder
+	if err := Write(&sb, ix); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(sb.String(), "FTX+AAA+++Caf\xe9 \xc6SIR'") {
+		t.Errorf("written back as %q", sb.String())
+	}
+}
+
+func TestReadReportsOncePerSegment(t *testing.T) {
+	ix, err := Read(strings.NewReader(charsetFile("UNOA", "2", "260101", "lower:case")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ix.Diagnostics) != 1 {
+		t.Errorf("diagnostics = %v, want one for the segment", ix.Diagnostics)
+	}
+}

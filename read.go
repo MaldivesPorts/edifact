@@ -106,6 +106,7 @@ func (r *Registry) Read(src io.Reader, opts ...ReadOption) (*Interchange, error)
 	sc := newScanner(br, d, cfg.maxSegment)
 	a := newAssembler()
 	first := true
+	var cs Charset
 	for {
 		raw, ok := sc.next()
 		if !ok {
@@ -114,8 +115,17 @@ func (r *Registry) Read(src io.Reader, opts ...ReadOption) (*Interchange, error)
 		s := parseSegment(raw, d)
 		if first && s.Tag == "UNB" {
 			d.Repetition = repetitionFor(s.Component(1, 2), declared, isDeclared)
+			cs = a.charsetFrom(s)
 		}
 		first = false
+		at := a.locate(s)
+		if problem := cs.decodeValues(s); problem != "" {
+			at.Severity, at.Tag, at.Message = Warning, s.Tag, problem
+			if !strings.HasPrefix(s.Tag, "UN") {
+				at.Qualifier = s.Qualifier()
+			}
+			a.diags = append(a.diags, at)
+		}
 		if err := a.add(s); err != nil {
 			return nil, err
 		}

@@ -511,3 +511,30 @@ func checkHeaderDates(ix *Interchange) error {
 	}
 	return nil
 }
+
+// charsetFrom returns the charset a UNB names, and reports a warning when it
+// names one this package does not support. An absent identifier is already
+// reported as a missing mandatory element.
+func (a *assembler) charsetFrom(unb *Segment) Charset {
+	id := unb.Component(1, 1)
+	c, ok := charsetNamed(id)
+	if !ok && id != "" {
+		a.diags = append(a.diags, Diagnostic{
+			Severity: Warning, Tag: "UNB", SegmentIdx: 1,
+			Message: fmt.Sprintf("syntax identifier %s is not supported, so its values are read as they are", id),
+		})
+	}
+	return c
+}
+
+// locate returns where s will sit once added: its message and its position
+// counting from UNH, or its position in the interchange counting from UNB.
+func (a *assembler) locate(s *Segment) Diagnostic {
+	switch {
+	case s.Tag == "UNH":
+		return Diagnostic{MessageIdx: a.msgCount + 1, MessageRef: s.Element(1), SegmentIdx: 1}
+	case a.msg != nil:
+		return Diagnostic{MessageIdx: a.msgCount, MessageRef: a.msg.Ref(), SegmentIdx: len(a.msg.segments) + 2}
+	}
+	return Diagnostic{SegmentIdx: a.idx + 1}
+}

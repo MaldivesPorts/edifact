@@ -126,3 +126,56 @@ var latin1Base = map[rune]string{
 	'ò': "o", 'ó': "o", 'ô': "o", 'õ': "o", 'ö': "o", 'ø': "o",
 	'ù': "u", 'ú': "u", 'û': "u", 'ü': "u", 'ý': "y", 'þ': "th", 'ÿ': "y",
 }
+
+// decode returns v as read in the charset, decoded from ISO 8859-1 for UNOC,
+// and a description of the first character outside the charset, or "" when
+// there is none.
+func (c Charset) decode(v string) (string, string) {
+	switch c {
+	case UNOA, UNOB:
+		for i := 0; i < len(v); i++ {
+			if b := v[i]; b >= 0x80 {
+				return v, fmt.Sprintf("byte 0x%02X is not in %s", b, c)
+			} else if !c.allows(rune(b)) {
+				return v, fmt.Sprintf("%q (U+%04X) is not in %s", rune(b), b, c)
+			}
+		}
+	case UNOC:
+		var sb strings.Builder
+		problem := ""
+		for i := 0; i < len(v); i++ {
+			r := rune(v[i])
+			if problem == "" && !c.allows(r) {
+				problem = fmt.Sprintf("byte 0x%02X is not in %s", v[i], c)
+			}
+			sb.WriteRune(r)
+		}
+		return sb.String(), problem
+	case UNOW:
+		if !utf8.ValidString(v) {
+			return v, "value is not valid UTF-8"
+		}
+	}
+	return v, ""
+}
+
+// decodeValues decodes every value of s in place, and describes the first
+// character outside the charset, naming its position, or returns "".
+func (c Charset) decodeValues(s *Segment) string {
+	problem := ""
+	for i, e := range s.elements {
+		for r, comps := range e {
+			for j, v := range comps {
+				decoded, p := c.decode(v)
+				s.elements[i][r][j] = decoded
+				if problem == "" && p != "" {
+					problem = fmt.Sprintf("element %d component %d: %s", i+1, j+1, p)
+					if r > 0 {
+						problem = fmt.Sprintf("element %d repetition %d component %d: %s", i+1, r+1, j+1, p)
+					}
+				}
+			}
+		}
+	}
+	return problem
+}
