@@ -84,7 +84,8 @@ func ExampleWrite() {
 	ix := edifact.NewInterchange()
 	ix.SetSender("SENDER", "")
 	ix.SetRecipient("RECIPIENT", "")
-	ix.SetPreparedDatetime("260101", "1200")
+	ix.SetDate("260101")
+	ix.SetTime("1200")
 	ix.SetControlRef("REF1")
 
 	m := ix.AddMessage(edifact.Key{
@@ -494,16 +495,19 @@ func ExampleInterchange_AddFunctionalGroup() {
 	ix := edifact.NewInterchange()
 	ix.SetSender("SENDER", "")
 	ix.SetRecipient("RECIPIENT", "")
-	ix.SetPreparedDatetime("260101", "1200")
+	ix.SetDate("260101")
+	ix.SetTime("1200")
 	ix.SetControlRef("REF1")
 
 	g := ix.AddFunctionalGroup("BAPLIE")
 	g.SetSender("SENDER", "")
 	g.SetRecipient("RECIPIENT", "")
-	g.SetPreparedDatetime("260101", "1200")
+	g.SetDate("260101")
+	g.SetTime("1200")
 	g.SetControlRef("G1")
 	g.SetAgency("UN")
-	g.SetVersionRelease("D", "95B")
+	g.SetVersion("D")
+	g.SetRelease("95B")
 
 	m := ix.AddMessageTo(g, edifact.Key{
 		Type:    edifact.Is("BAPLIE"),

@@ -27,6 +27,10 @@ var ErrGroupMismatch = errors.New("edifact: message does not match its functiona
 // makes mandatory.
 var ErrIncompleteHeader = errors.New("edifact: header is missing mandatory elements")
 
+// ErrHeaderDate reports a UNB or UNG date of preparation whose length does not
+// match the syntax version: eight digits in version 4 and six below it.
+var ErrHeaderDate = errors.New("edifact: date of preparation does not match the syntax version")
+
 // assembler distributes a stream of segments into an interchange, sorting
 // service segments into headers and the rest into the open message.
 type assembler struct {
@@ -70,7 +74,7 @@ func (a *assembler) add(s *Segment) error {
 		if a.msg != nil || a.group != nil {
 			return fmt.Errorf("%w: UNG inside an open %s", ErrUnexpected, a.openWhat())
 		}
-		a.group = &FunctionalGroup{header: s}
+		a.group = &FunctionalGroup{header: s, ix: a.ix}
 		a.ix.groups = append(a.ix.groups, a.group)
 		a.checkHeader(s, ungRules(a.ix), Diagnostic{SegmentIdx: a.idx + 1})
 		a.inGroup = 0
@@ -490,4 +494,20 @@ func trailer(tag string, count int, ref string) *Segment {
 	s.Set(1, 1, strconv.Itoa(count))
 	s.Set(2, 1, ref)
 	return s
+}
+
+// checkHeaderDates refuses a UNB or UNG date of preparation whose length does
+// not match the interchange's syntax version. An absent date is left to
+// checkHeaders.
+func checkHeaderDates(ix *Interchange) error {
+	want := preparedDateLength(ix.SyntaxVersion())
+	if d := ix.Date(); d != "" && len(d) != want {
+		return fmt.Errorf("%w: UNB date %q, want %d digits for syntax version %s", ErrHeaderDate, d, want, ix.SyntaxVersion())
+	}
+	for i, g := range ix.groups {
+		if d := g.Date(); d != "" && len(d) != want {
+			return fmt.Errorf("%w: UNG of functional group %d (%s) date %q, want %d digits", ErrHeaderDate, i+1, g.ControlRef(), d, want)
+		}
+	}
+	return nil
 }

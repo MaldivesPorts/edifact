@@ -25,6 +25,8 @@ type Interchange struct {
 type FunctionalGroup struct {
 	// header is the UNG segment.
 	header *Segment
+	// ix is the interchange holding the functional group.
+	ix *Interchange
 }
 
 // Message is everything between UNH and UNT.
@@ -99,7 +101,7 @@ func (ix *Interchange) AddMessageTo(g *FunctionalGroup, k Key) *Message {
 // AddFunctionalGroup appends a functional group whose UNG names messageType,
 // and returns it.
 func (ix *Interchange) AddFunctionalGroup(messageType string) *FunctionalGroup {
-	g := &FunctionalGroup{header: &Segment{Tag: "UNG"}}
+	g := &FunctionalGroup{header: &Segment{Tag: "UNG"}, ix: ix}
 	g.SetMessageType(messageType)
 	ix.groups = append(ix.groups, g)
 	return g

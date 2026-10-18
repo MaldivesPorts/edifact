@@ -1,5 +1,10 @@
 package edifact
 
+import (
+	"fmt"
+	"time"
+)
+
 // Accessors over the service segment headers. Each reads its position out of
 // the stored segment, so a position no accessor names is still carried.
 
@@ -59,10 +64,27 @@ func (ix *Interchange) SetRecipient(id, qualifier string) {
 	ix.Header().Set(3, 2, qualifier)
 }
 
-// SetPreparedDatetime writes the date and time of preparation.
-func (ix *Interchange) SetPreparedDatetime(date, time string) {
-	ix.Header().Set(4, 1, date)
-	ix.Header().Set(4, 2, time)
+// SetDate writes the date of preparation, as YYMMDD or CCYYMMDD.
+func (ix *Interchange) SetDate(date string) { ix.Header().Set(4, 1, date) }
+
+// SetTime writes the time of preparation, as HHMM.
+func (ix *Interchange) SetTime(time string) { ix.Header().Set(4, 2, time) }
+
+// DateTime returns the date and time of preparation. UNB carries no time zone,
+// so the result is in UnknownTimezone. A six-digit date is read as YYMMDD and
+// an eight-digit one as CCYYMMDD.
+func (ix *Interchange) DateTime() (time.Time, error) {
+	return preparedAt(ix.Date(), ix.Time())
+}
+
+// SetDateTime writes t's date and time of preparation: the date as CCYYMMDD in
+// syntax version 4 and YYMMDD below it, and the time as HHMM. t's clock is
+// written as it is. Set the syntax version first, since Write refuses a date
+// whose length does not match it.
+func (ix *Interchange) SetDateTime(t time.Time) {
+	date, hhmm := preparedValues(ix.SyntaxVersion(), t)
+	ix.SetDate(date)
+	ix.SetTime(hhmm)
 }
 
 // SetControlRef writes the interchange control reference.
@@ -124,10 +146,28 @@ func (g *FunctionalGroup) SetRecipient(id, qualifier string) {
 	g.Header().Set(3, 2, qualifier)
 }
 
-// SetPreparedDatetime writes the date and time of preparation.
-func (g *FunctionalGroup) SetPreparedDatetime(date, time string) {
-	g.Header().Set(4, 1, date)
-	g.Header().Set(4, 2, time)
+// SetDate writes the date of preparation, as YYMMDD or CCYYMMDD.
+func (g *FunctionalGroup) SetDate(date string) { g.Header().Set(4, 1, date) }
+
+// SetTime writes the time of preparation, as HHMM.
+func (g *FunctionalGroup) SetTime(time string) { g.Header().Set(4, 2, time) }
+
+// DateTime returns the date and time of preparation, read as
+// Interchange.DateTime reads them.
+func (g *FunctionalGroup) DateTime() (time.Time, error) {
+	return preparedAt(g.Date(), g.Time())
+}
+
+// SetDateTime writes t's date and time of preparation, in the formats the
+// interchange's syntax version requires, as Interchange.SetDateTime does.
+func (g *FunctionalGroup) SetDateTime(t time.Time) {
+	version := ""
+	if g.ix != nil {
+		version = g.ix.SyntaxVersion()
+	}
+	date, hhmm := preparedValues(version, t)
+	g.SetDate(date)
+	g.SetTime(hhmm)
 }
 
 // SetControlRef writes the functional group's reference.
@@ -136,12 +176,11 @@ func (g *FunctionalGroup) SetControlRef(ref string) { g.Header().Set(5, 1, ref) 
 // SetAgency writes the controlling agency.
 func (g *FunctionalGroup) SetAgency(a string) { g.Header().Set(6, 1, a) }
 
-// SetVersionRelease writes the message version and release numbers, which name
-// the directory together.
-func (g *FunctionalGroup) SetVersionRelease(version, release string) {
-	g.Header().Set(7, 1, version)
-	g.Header().Set(7, 2, release)
-}
+// SetVersion writes the message version number.
+func (g *FunctionalGroup) SetVersion(version string) { g.Header().Set(7, 1, version) }
+
+// SetRelease writes the message release number.
+func (g *FunctionalGroup) SetRelease(release string) { g.Header().Set(7, 2, release) }
 
 // UNH, elements 1 to 4.
 
@@ -191,4 +230,36 @@ func (m *Message) unh() *Segment {
 		return nil
 	}
 	return m.header
+}
+
+// preparedAt reads a date and time of preparation, choosing YYMMDD or
+// CCYYMMDD by the date's length.
+func preparedAt(date, hhmm string) (time.Time, error) {
+	switch len(date) {
+	case 0:
+		return time.Time{}, ErrEmpty
+	case 6:
+		return ParseTime(date+hhmm, "201")
+	case 8:
+		return ParseTime(date+hhmm, "203")
+	}
+	return time.Time{}, fmt.Errorf("%w: date of preparation %q is neither YYMMDD nor CCYYMMDD", ErrDateFormat, date)
+}
+
+// preparedValues renders t as a date and time of preparation for a syntax
+// version.
+func preparedValues(version string, t time.Time) (date, hhmm string) {
+	if version == "4" {
+		return t.Format("20060102"), t.Format("1504")
+	}
+	return t.Format("060102"), t.Format("1504")
+}
+
+// preparedDateLength is the length of the date of preparation in a syntax
+// version: CCYYMMDD in version 4 and YYMMDD below it.
+func preparedDateLength(version string) int {
+	if version == "4" {
+		return 8
+	}
+	return 6
 }

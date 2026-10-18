@@ -1,6 +1,11 @@
 package edifact
 
-import "testing"
+import (
+	"errors"
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestUNBCarriesPositionsNoAccessorNames(t *testing.T) {
 	ix := NewInterchange()
@@ -25,7 +30,8 @@ func TestInterchangeAccessors(t *testing.T) {
 	ix := NewInterchange()
 	ix.SetSender("TERMINAL", "ZZZ")
 	ix.SetRecipient("PARTNER", "")
-	ix.SetPreparedDatetime("260921", "1030")
+	ix.SetDate("260921")
+	ix.SetTime("1030")
 	ix.SetControlRef("CTRL001")
 
 	if ix.SyntaxIdentifier() != "UNOA" || ix.SyntaxVersion() != "2" {
@@ -114,10 +120,12 @@ func TestFunctionalGroupSetterCoverage(t *testing.T) {
 	g := ix.AddFunctionalGroup("TSTMSG")
 	g.SetSender("TERMINAL", "ZZZ")
 	g.SetRecipient("PARTNER", "")
-	g.SetPreparedDatetime("260921", "1030")
+	g.SetDate("260921")
+	g.SetTime("1030")
 	g.SetControlRef("GRP1")
 	g.SetAgency("UN")
-	g.SetVersionRelease("D", "95B")
+	g.SetVersion("D")
+	g.SetRelease("95B")
 
 	for _, c := range []struct{ name, got, want string }{
 		{"MessageType", g.MessageType(), "TSTMSG"},
@@ -158,5 +166,63 @@ func TestEmptyQualifierClearsTheOldOne(t *testing.T) {
 	}
 	if ix.Sender() != "B" || ix.Recipient() != "D" || g.Sender() != "F" || g.Recipient() != "H" {
 		t.Error("identifications not replaced")
+	}
+}
+
+func TestDateTimeFollowsTheSyntaxVersion(t *testing.T) {
+	when := time.Date(2026, 1, 2, 15, 4, 59, 0, time.UTC)
+
+	ix := NewInterchange()
+	ix.SetDateTime(when)
+	if ix.Date() != "260102" || ix.Time() != "1504" {
+		t.Errorf("version 2: date %q, time %q", ix.Date(), ix.Time())
+	}
+
+	ix.SetSyntax("UNOA", "4")
+	ix.SetDateTime(when)
+	g := ix.AddFunctionalGroup("TSTMSG")
+	g.SetDateTime(when)
+	if ix.Date() != "20260102" || g.Date() != "20260102" || g.Time() != "1504" {
+		t.Errorf("version 4: UNB date %q, UNG date %q, UNG time %q", ix.Date(), g.Date(), g.Time())
+	}
+
+	for _, got := range []func() (time.Time, error){ix.DateTime, g.DateTime} {
+		read, err := got()
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := time.Date(2026, 1, 2, 15, 4, 0, 0, UnknownTimezone)
+		if !read.Equal(want) || read.Location() != UnknownTimezone {
+			t.Errorf("DateTime = %v, want %v", read, want)
+		}
+	}
+}
+
+func TestDateTimeRejectsOtherLengths(t *testing.T) {
+	ix := NewInterchange()
+	if _, err := ix.DateTime(); !errors.Is(err, ErrEmpty) {
+		t.Errorf("no date: err = %v, want ErrEmpty", err)
+	}
+	ix.SetDate("2601")
+	ix.SetTime("1200")
+	if _, err := ix.DateTime(); !errors.Is(err, ErrDateFormat) {
+		t.Errorf("four-digit date: err = %v, want ErrDateFormat", err)
+	}
+}
+
+func TestWriteRefusesADateOfTheWrongLength(t *testing.T) {
+	ix := completeInterchange()
+	completeMessage(ix, nil, "M1").Add("BGM", "", "REF1")
+	ix.SetSyntax("UNOA", "4")
+
+	var sb strings.Builder
+	err := Write(&sb, ix)
+	if !errors.Is(err, ErrHeaderDate) || sb.Len() != 0 {
+		t.Fatalf("err = %v, wrote %d bytes, want ErrHeaderDate and nothing written", err, sb.Len())
+	}
+
+	ix.SetDate("20260101")
+	if err := Write(&sb, ix); err != nil {
+		t.Errorf("eight digits in version 4: %v", err)
 	}
 }

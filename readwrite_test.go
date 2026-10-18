@@ -122,7 +122,8 @@ func TestWriteThenRead(t *testing.T) {
 	ix := NewInterchange()
 	ix.SetSender("TERMINAL", "")
 	ix.SetRecipient("PARTNER", "")
-	ix.SetPreparedDatetime("260921", "1030")
+	ix.SetDate("260921")
+	ix.SetTime("1030")
 	ix.SetControlRef("CTRL1")
 
 	m := ix.AddMessage(Key{Type: Is("TSTMSG"), Version: Is("D"), Release: Is("95B"), Agency: Is("UN"), Association: Is("AAA01")})
@@ -542,7 +543,7 @@ func TestReadStoresOneRepetition(t *testing.T) {
 	}
 }
 
-const repeating = "UNA:+.?*'UNB+UNOA:4+S+R+260101:1200+C1'" +
+const repeating = "UNA:+.?*'UNB+UNOA:4+S+R+20260101:1200+C1'" +
 	"UNH+M1+TSTMSG:D:95B:UN'FTX+AAA+++A:1*B?*C*D:2'FTX+AAA+++E**'UNT+4+M1'UNZ+1+C1'"
 
 func TestReadRepetitions(t *testing.T) {
@@ -590,6 +591,7 @@ func TestWriteRepetitions(t *testing.T) {
 func TestSetRepetition(t *testing.T) {
 	ix := completeInterchange()
 	ix.SetSyntax("UNOA", "4")
+	ix.SetDate("20260101")
 	s := completeMessage(ix, nil, "M1").Add("FTX", "AAA")
 	s.SetRepetition(4, 1, 1, "A")
 	s.SetRepetition(4, 3, 2, "C")
@@ -645,6 +647,7 @@ func TestAsteriskIsDataBelowVersion4(t *testing.T) {
 func TestRepetitionSeparatorWithoutRelease(t *testing.T) {
 	ix := completeInterchange()
 	ix.SetSyntax("UNOA", "4")
+	ix.SetDate("20260101")
 	ix.Delimiters.Release = 0
 	completeMessage(ix, nil, "M1").Add("FTX", "AAA", "", "", "A*B")
 
@@ -1095,6 +1098,7 @@ func TestWriteRepetitionSeparatorFollowsTheSyntaxVersion(t *testing.T) {
 
 	ix = completeInterchange()
 	ix.SetSyntax("UNOA", "4")
+	ix.SetDate("20260101")
 	s := completeMessage(ix, nil, "M1").Add("COM")
 	s.SetRepetition(1, 1, 1, "111")
 	s.SetRepetition(1, 2, 1, "222")
@@ -1140,6 +1144,7 @@ func TestSyntaxVersionSurvivesFillerAfterTheUNA(t *testing.T) {
 func TestVersion4RoundTripsWithLineBreaks(t *testing.T) {
 	ix := completeInterchange()
 	ix.SetSyntax("UNOA", "4")
+	ix.SetDate("20260101")
 	s := completeMessage(ix, nil, "M1").Add("COM")
 	s.SetRepetition(1, 1, 1, "111")
 	s.SetRepetition(1, 2, 1, "222")

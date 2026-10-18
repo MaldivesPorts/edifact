@@ -21,7 +21,8 @@ func completeInterchange() *Interchange {
 	ix := NewInterchange()
 	ix.SetSender("S", "")
 	ix.SetRecipient("R", "")
-	ix.SetPreparedDatetime("260101", "1200")
+	ix.SetDate("260101")
+	ix.SetTime("1200")
 	ix.SetControlRef("C1")
 	return ix
 }
@@ -37,10 +38,12 @@ func completeGroup(ix *Interchange, ref string) *FunctionalGroup {
 	g := ix.AddFunctionalGroup("TSTMSG")
 	g.SetSender("AS", "")
 	g.SetRecipient("AR", "")
-	g.SetPreparedDatetime("260101", "1200")
+	g.SetDate("260101")
+	g.SetTime("1200")
 	g.SetControlRef(ref)
 	g.SetAgency("UN")
-	g.SetVersionRelease("D", "95B")
+	g.SetVersion("D")
+	g.SetRelease("95B")
 	return g
 }
 
@@ -456,8 +459,9 @@ func TestWriteRefusesIncompleteHeaders(t *testing.T) {
 			"date of preparation, time of preparation, controlling agency, message version, message release"},
 		{"UNG version 4", func(ix *Interchange) {
 			ix.SetSyntax("UNOA", "4")
+			ix.SetDate("20260101")
 			g := ix.AddFunctionalGroup("TSTMSG")
-			g.SetPreparedDatetime("260101", "")
+			g.SetDate("20260101")
 			completeMessage(ix, g, "M1")
 		}, "UNG of functional group 1 (): time of preparation, functional group reference"},
 		{"UNB recipient reference", func(ix *Interchange) {
@@ -481,6 +485,7 @@ func TestWriteRefusesIncompleteHeaders(t *testing.T) {
 func TestWriteAcceptsAMinimalVersion4Group(t *testing.T) {
 	ix := completeInterchange()
 	ix.SetSyntax("UNOA", "4")
+	ix.SetDate("20260101")
 	g := ix.AddFunctionalGroup("")
 	g.SetControlRef("G1")
 	completeMessage(ix, g, "M1").Add("BGM", "", "REF1")
@@ -572,8 +577,12 @@ func TestReadReportsEmptyEnvelopes(t *testing.T) {
 
 func TestMessagesMustMatchTheirFunctionalGroup(t *testing.T) {
 	group := func(version, unh string) string {
-		return "UNB+UNOA:" + version + "+S+R+260101:1200+C1'" +
-			"UNG+BAPLIE+AS+AR+260101:1200+G1+UN+D:95B'" + unh + "BGM++REF1'UNT+3+M1'UNE+1+G1'UNZ+1+C1'"
+		date := "260101"
+		if version == "4" {
+			date = "20260101"
+		}
+		return "UNB+UNOA:" + version + "+S+R+" + date + ":1200+C1'" +
+			"UNG+BAPLIE+AS+AR+" + date + ":1200+G1+UN+D:95B'" + unh + "BGM++REF1'UNT+3+M1'UNE+1+G1'UNZ+1+C1'"
 	}
 	cases := []struct{ name, src, want string }{
 		{"other type", group("2", "UNH+M1+MOVINS:D:95B:UN'"), "message type MOVINS differs from the functional group's BAPLIE"},

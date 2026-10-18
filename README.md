@@ -48,7 +48,8 @@ container XXXU7654321 size and type 45G1
 ix := edifact.NewInterchange()
 ix.SetSender("SENDER", "")
 ix.SetRecipient("RECIPIENT", "")
-ix.SetPreparedDatetime("260101", "1200")
+ix.SetDate("260101")
+ix.SetTime("1200")
 ix.SetControlRef("REF1")
 
 m := ix.AddMessage(edifact.Key{

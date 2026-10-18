@@ -85,6 +85,11 @@ func (r *Registry) Write(w io.Writer, ix *Interchange, opts ...WriteOption) erro
 			return err
 		}
 	}
+	if ix.header != nil {
+		if err := checkHeaderDates(ix); err != nil {
+			return err
+		}
+	}
 
 	segs, err := envelopeSegments(ix, omit)
 	if err != nil {

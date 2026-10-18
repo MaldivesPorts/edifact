@@ -1,0 +1,10 @@
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+
+# Go test and profiling output
+*.test
+*.out
+*.prof
+coverage.*
