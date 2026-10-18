@@ -113,11 +113,18 @@ func (r *Registry) Write(w io.Writer, ix *Interchange, opts ...WriteOption) erro
 		return err
 	}
 
+	// An interchange naming a charset this package does not support, or none,
+	// is written as it is.
+	cs, _ := ix.Charset()
+	if cs == UNOW && ix.SyntaxVersion() != 4 {
+		return fmt.Errorf("%w: UNOW needs syntax version 4, not %d", ErrSyntaxVersion, ix.SyntaxVersion())
+	}
+
 	// Every segment is rendered before anything is written, so a value that
 	// cannot be represented leaves w untouched.
 	rendered := make([]string, len(segs))
 	for i, s := range segs {
-		if rendered[i], err = formatSegment(s, d); err != nil {
+		if rendered[i], err = formatSegment(s, d, cs); err != nil {
 			return err
 		}
 	}
@@ -141,10 +148,18 @@ func (r *Registry) Write(w io.Writer, ix *Interchange, opts ...WriteOption) erro
 
 // formatSegment renders one segment, escaping values and dropping trailing
 // empty components and elements, which carry no meaning.
-func formatSegment(s *Segment, d Delimiters) (string, error) {
-	elems, err := renderElements(s, d)
+func formatSegment(s *Segment, d Delimiters, cs Charset) (string, error) {
+	elems, err := renderElements(s, d, cs)
 	if err != nil {
 		return "", err
+	}
+	if _, err := cs.encode(s.Tag); err != nil {
+		return "", fmt.Errorf("tag %s: %w", s.Tag, err)
+	}
+	for i, idx := range s.index {
+		if _, err := cs.encode(idx); err != nil {
+			return "", fmt.Errorf("%s index %d: %w", s.Tag, i+1, err)
+		}
 	}
 	if d.unreleasable(s.Tag) {
 		return "", fmt.Errorf("%w: tag %q", ErrUnreleasable, s.Tag)
@@ -168,7 +183,7 @@ func formatSegment(s *Segment, d Delimiters) (string, error) {
 	return sb.String(), nil
 }
 
-func renderElements(s *Segment, d Delimiters) ([]string, error) {
+func renderElements(s *Segment, d Delimiters, cs Charset) ([]string, error) {
 	out := make([]string, len(s.elements))
 	for i, e := range s.elements {
 		reps := make([]string, len(e))
@@ -179,6 +194,10 @@ func renderElements(s *Segment, d Delimiters) ([]string, error) {
 				c = strings.TrimRight(c, " ")
 				if r == 0 && d.Decimal == ',' && s.floats[[2]int{i + 1, j + 1}] {
 					c = strings.Replace(c, ".", ",", 1)
+				}
+				c, err := cs.encode(c)
+				if err != nil {
+					return nil, fmt.Errorf("%s element %d component %d: %w", s.Tag, i+1, j+1, err)
 				}
 				if d.unreleasable(c) {
 					return nil, fmt.Errorf("%w: %s element %d component %d", ErrUnreleasable, s.Tag, i+1, j+1)
