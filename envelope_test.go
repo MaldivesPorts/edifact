@@ -433,7 +433,8 @@ func TestWriteRefusesAnIncompleteUNB(t *testing.T) {
 	}
 
 	ix := completeInterchange()
-	ix.SetSyntax("", "")
+	ix.Header().Set(1, 1, "")
+	ix.Header().Set(1, 2, "")
 	if err := Write(&sb, ix); err == nil || !strings.HasSuffix(err.Error(), "syntax identifier, syntax version") {
 		t.Errorf("err = %v, want the syntax identifier and version named", err)
 	}
@@ -458,7 +459,8 @@ func TestWriteRefusesIncompleteHeaders(t *testing.T) {
 		}, "UNG of functional group 1 (G1): application sender identification, application recipient identification, " +
 			"date of preparation, time of preparation, controlling agency, message version, message release"},
 		{"UNG version 4", func(ix *Interchange) {
-			ix.SetSyntax("UNOA", "4")
+			ix.SetCharset(UNOA)
+			ix.SetSyntaxVersion(4)
 			ix.SetDate("20260101")
 			g := ix.AddFunctionalGroup("TSTMSG")
 			g.SetDate("20260101")
@@ -484,7 +486,8 @@ func TestWriteRefusesIncompleteHeaders(t *testing.T) {
 
 func TestWriteAcceptsAMinimalVersion4Group(t *testing.T) {
 	ix := completeInterchange()
-	ix.SetSyntax("UNOA", "4")
+	ix.SetCharset(UNOA)
+	ix.SetSyntaxVersion(4)
 	ix.SetDate("20260101")
 	g := ix.AddFunctionalGroup("")
 	g.SetControlRef("G1")
@@ -620,21 +623,21 @@ func TestMessagesMustMatchTheirFunctionalGroup(t *testing.T) {
 
 func TestUNHRulesFollowTheSyntaxVersion(t *testing.T) {
 	for _, c := range []struct {
-		version string
+		version int
 		ok      bool
-	}{{"1", true}, {"2", false}, {"3", false}, {"4", false}} {
+	}{{1, true}, {2, false}, {3, false}, {4, false}} {
 		ix := completeInterchange()
-		ix.SetSyntax("UNOA", c.version)
+		ix.SetSyntaxVersion(c.version)
 		m := ix.AddMessage(Key{Type: Is("BAPLIE"), Version: Is("1")})
 		m.SetRef("M1")
 		m.Add("BGM", "", "REF1")
 
 		err := Write(&strings.Builder{}, ix)
 		if c.ok && err != nil {
-			t.Errorf("version %s: %v", c.version, err)
+			t.Errorf("version %d: %v", c.version, err)
 		}
 		if !c.ok && (!errors.Is(err, ErrIncompleteHeader) || !strings.HasSuffix(err.Error(), "message release, controlling agency")) {
-			t.Errorf("version %s: err = %v", c.version, err)
+			t.Errorf("version %d: err = %v", c.version, err)
 		}
 	}
 

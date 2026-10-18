@@ -303,7 +303,7 @@ func present(s *Segment, i int) bool {
 
 // ungRules returns the UNG rules for the syntax version ix declares.
 func ungRules(ix *Interchange) []mandatory {
-	if ix.SyntaxVersion() == "4" {
+	if ix.SyntaxVersion() == 4 {
 		return ungMandatoryV4
 	}
 	return ungMandatory
@@ -311,7 +311,7 @@ func ungRules(ix *Interchange) []mandatory {
 
 // unhRules returns the UNH rules for the syntax version ix declares.
 func unhRules(ix *Interchange) []mandatory {
-	if ix.SyntaxVersion() == "1" {
+	if ix.SyntaxVersion() == 1 {
 		return unhMandatoryV1
 	}
 	return unhMandatory
@@ -350,7 +350,7 @@ var envelopeTags = map[string]bool{
 // message types in one functional group, so nothing is compared there.
 func groupMismatch(ix *Interchange, m *Message) string {
 	g := m.group
-	if g == nil || ix.SyntaxVersion() == "4" {
+	if g == nil || ix.SyntaxVersion() == 4 {
 		return ""
 	}
 	k := m.Key()
@@ -502,7 +502,7 @@ func trailer(tag string, count int, ref string) *Segment {
 func checkHeaderDates(ix *Interchange) error {
 	want := preparedDateLength(ix.SyntaxVersion())
 	if d := ix.Date(); d != "" && len(d) != want {
-		return fmt.Errorf("%w: UNB date %q, want %d digits for syntax version %s", ErrHeaderDate, d, want, ix.SyntaxVersion())
+		return fmt.Errorf("%w: UNB date %q, want %d digits for syntax version %d", ErrHeaderDate, d, want, ix.SyntaxVersion())
 	}
 	for i, g := range ix.groups {
 		if d := g.Date(); d != "" && len(d) != want {

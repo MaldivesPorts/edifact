@@ -79,7 +79,8 @@ func NewInterchange() *Interchange {
 		Delimiters: StandardDelimiters(),
 		header:     &Segment{Tag: "UNB"},
 	}
-	ix.SetSyntax("UNOA", "2")
+	ix.SetCharset(UNOA)
+	ix.SetSyntaxVersion(2)
 	return ix
 }
 

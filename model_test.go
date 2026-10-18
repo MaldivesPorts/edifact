@@ -187,7 +187,8 @@ func TestSegmentGroupAddBuildsGroupsFrontToBack(t *testing.T) {
 
 func TestZeroValuesAreUsable(t *testing.T) {
 	var ix Interchange
-	ix.SetSyntax("UNOA", "2")
+	ix.SetCharset(UNOA)
+	ix.SetSyntaxVersion(2)
 	ix.SetSender("S", "")
 	ix.SetRecipient("R", "")
 	ix.SetDate("260101")

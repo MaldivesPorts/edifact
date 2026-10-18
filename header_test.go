@@ -34,8 +34,8 @@ func TestInterchangeAccessors(t *testing.T) {
 	ix.SetTime("1030")
 	ix.SetControlRef("CTRL001")
 
-	if ix.SyntaxIdentifier() != "UNOA" || ix.SyntaxVersion() != "2" {
-		t.Errorf("syntax = %q:%q", ix.SyntaxIdentifier(), ix.SyntaxVersion())
+	if c, ok := ix.Charset(); !ok || c != UNOA || ix.SyntaxVersion() != 2 {
+		t.Errorf("syntax = %v:%d", c, ix.SyntaxVersion())
 	}
 	if ix.Sender() != "TERMINAL" || ix.Header().Component(2, 2) != "ZZZ" {
 		t.Error("sender not written")
@@ -100,12 +100,13 @@ func TestFunctionalGroupAccessors(t *testing.T) {
 
 func TestInterchangeSetterCoverage(t *testing.T) {
 	ix := NewInterchange()
-	ix.SetSyntax("UNOC", "4")
+	ix.SetCharset(UNOC)
+	ix.SetSyntaxVersion(4)
 	ix.SetApplicationRef("APPREF")
 	ix.SetAgreementID("AGREE01")
 
-	if ix.SyntaxIdentifier() != "UNOC" || ix.SyntaxVersion() != "4" {
-		t.Errorf("syntax = %q:%q", ix.SyntaxIdentifier(), ix.SyntaxVersion())
+	if c, ok := ix.Charset(); !ok || c != UNOC || ix.SyntaxVersion() != 4 {
+		t.Errorf("syntax = %v:%d", c, ix.SyntaxVersion())
 	}
 	if ix.ApplicationRef() != "APPREF" {
 		t.Errorf("ApplicationRef() = %q", ix.ApplicationRef())
@@ -178,7 +179,8 @@ func TestDateTimeFollowsTheSyntaxVersion(t *testing.T) {
 		t.Errorf("version 2: date %q, time %q", ix.Date(), ix.Time())
 	}
 
-	ix.SetSyntax("UNOA", "4")
+	ix.SetCharset(UNOA)
+	ix.SetSyntaxVersion(4)
 	ix.SetDateTime(when)
 	g := ix.AddFunctionalGroup("TSTMSG")
 	g.SetDateTime(when)
@@ -213,7 +215,8 @@ func TestDateTimeRejectsOtherLengths(t *testing.T) {
 func TestWriteRefusesADateOfTheWrongLength(t *testing.T) {
 	ix := completeInterchange()
 	completeMessage(ix, nil, "M1").Add("BGM", "", "REF1")
-	ix.SetSyntax("UNOA", "4")
+	ix.SetCharset(UNOA)
+	ix.SetSyntaxVersion(4)
 
 	var sb strings.Builder
 	err := Write(&sb, ix)
@@ -224,5 +227,46 @@ func TestWriteRefusesADateOfTheWrongLength(t *testing.T) {
 	ix.SetDate("20260101")
 	if err := Write(&sb, ix); err != nil {
 		t.Errorf("eight digits in version 4: %v", err)
+	}
+}
+
+func TestCharsetAndSyntaxVersion(t *testing.T) {
+	ix := NewInterchange()
+	ix.SetCharset(UNOW)
+	if err := ix.SetSyntaxVersion(4); err != nil {
+		t.Fatal(err)
+	}
+	if c, ok := ix.Charset(); !ok || c != UNOW || ix.SyntaxVersion() != 4 {
+		t.Errorf("charset %v, %v, version %d", c, ok, ix.SyntaxVersion())
+	}
+	if got := ix.Header().Component(1, 1) + ":" + ix.Header().Component(1, 2); got != "UNOW:4" {
+		t.Errorf("UNB element 1 = %q", got)
+	}
+
+	for _, v := range []int{0, 5, -1} {
+		if err := ix.SetSyntaxVersion(v); !errors.Is(err, ErrSyntaxVersion) {
+			t.Errorf("version %d: err = %v, want ErrSyntaxVersion", v, err)
+		}
+	}
+	if ix.SyntaxVersion() != 4 {
+		t.Errorf("a refused version was written: %d", ix.SyntaxVersion())
+	}
+
+	ix.Header().Set(1, 1, "UNOD")
+	ix.Header().Set(1, 2, "X")
+	if c, ok := ix.Charset(); ok || c != (Charset{}) {
+		t.Errorf("UNOD: charset %v, %v, want the zero Charset and false", c, ok)
+	}
+	if ix.SyntaxVersion() != 0 {
+		t.Errorf("version X read as %d, want 0", ix.SyntaxVersion())
+	}
+}
+
+func TestWriteRefusesTheZeroCharset(t *testing.T) {
+	ix := completeInterchange()
+	completeMessage(ix, nil, "M1").Add("BGM", "", "REF1")
+	ix.SetCharset(Charset{})
+	if err := Write(&strings.Builder{}, ix); !errors.Is(err, ErrIncompleteHeader) || !strings.Contains(err.Error(), "syntax identifier") {
+		t.Errorf("err = %v, want ErrIncompleteHeader naming the syntax identifier", err)
 	}
 }

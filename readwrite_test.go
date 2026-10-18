@@ -590,7 +590,8 @@ func TestWriteRepetitions(t *testing.T) {
 
 func TestSetRepetition(t *testing.T) {
 	ix := completeInterchange()
-	ix.SetSyntax("UNOA", "4")
+	ix.SetCharset(UNOA)
+	ix.SetSyntaxVersion(4)
 	ix.SetDate("20260101")
 	s := completeMessage(ix, nil, "M1").Add("FTX", "AAA")
 	s.SetRepetition(4, 1, 1, "A")
@@ -646,7 +647,8 @@ func TestAsteriskIsDataBelowVersion4(t *testing.T) {
 
 func TestRepetitionSeparatorWithoutRelease(t *testing.T) {
 	ix := completeInterchange()
-	ix.SetSyntax("UNOA", "4")
+	ix.SetCharset(UNOA)
+	ix.SetSyntaxVersion(4)
 	ix.SetDate("20260101")
 	ix.Delimiters.Release = 0
 	completeMessage(ix, nil, "M1").Add("FTX", "AAA", "", "", "A*B")
@@ -917,8 +919,8 @@ func TestReadLevelBWithUNA(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if ix.SyntaxIdentifier() != "UNOB" || ix.Date() != "260101" {
-		t.Errorf("identifier %q, date %q", ix.SyntaxIdentifier(), ix.Date())
+	if c, _ := ix.Charset(); c != UNOB || ix.Date() != "260101" {
+		t.Errorf("charset %v, date %q", c, ix.Date())
 	}
 }
 
@@ -1097,7 +1099,8 @@ func TestWriteRepetitionSeparatorFollowsTheSyntaxVersion(t *testing.T) {
 	}
 
 	ix = completeInterchange()
-	ix.SetSyntax("UNOA", "4")
+	ix.SetCharset(UNOA)
+	ix.SetSyntaxVersion(4)
 	ix.SetDate("20260101")
 	s := completeMessage(ix, nil, "M1").Add("COM")
 	s.SetRepetition(1, 1, 1, "111")
@@ -1143,7 +1146,8 @@ func TestSyntaxVersionSurvivesFillerAfterTheUNA(t *testing.T) {
 
 func TestVersion4RoundTripsWithLineBreaks(t *testing.T) {
 	ix := completeInterchange()
-	ix.SetSyntax("UNOA", "4")
+	ix.SetCharset(UNOA)
+	ix.SetSyntaxVersion(4)
 	ix.SetDate("20260101")
 	s := completeMessage(ix, nil, "M1").Add("COM")
 	s.SetRepetition(1, 1, 1, "111")

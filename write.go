@@ -104,7 +104,7 @@ func (r *Registry) Write(w io.Writer, ix *Interchange, opts ...WriteOption) erro
 		d.Decimal = '.'
 	}
 	switch {
-	case ix.SyntaxVersion() != "4":
+	case ix.SyntaxVersion() != 4:
 		d.Repetition = 0
 	case d.Repetition == 0:
 		d.Repetition = '*'

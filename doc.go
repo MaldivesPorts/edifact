@@ -263,7 +263,7 @@
 // on the first repetition, so code that ignores repetitions keeps working.
 // [Segment.SetRepetition] writes into one.
 //
-// To write repetitions, call [Interchange.SetSyntax] with version 4. Syntax
+// To write repetitions, call [Interchange.SetSyntaxVersion] with 4. Syntax
 // versions 1 to 3 have no repetitions. The fifth UNA position is a space, * is
 // an ordinary character, and writing an element with several repetitions
 // returns [ErrNoRepetitionSeparator].

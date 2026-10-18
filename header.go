@@ -1,7 +1,9 @@
 package edifact
 
 import (
+	"errors"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -10,11 +12,39 @@ import (
 
 // UNB, elements 1 to 11.
 
-// SyntaxIdentifier returns the character repertoire, such as UNOA.
-func (ix *Interchange) SyntaxIdentifier() string { return ix.header.Component(1, 1) }
+// Charset returns the syntax level UNB names. It reports false when UNB names
+// none, or one this package does not support, such as UNOD. The identifier as
+// written stays readable through Header().Component(1, 1).
+func (ix *Interchange) Charset() (Charset, bool) {
+	return charsetNamed(ix.header.Component(1, 1))
+}
 
-// SyntaxVersion returns the ISO 9735 edition, "1" through "4".
-func (ix *Interchange) SyntaxVersion() string { return ix.header.Component(1, 2) }
+// SetCharset writes the syntax identifier. Write refuses the zero Charset as a
+// missing mandatory element.
+func (ix *Interchange) SetCharset(c Charset) { ix.Header().Set(1, 1, c.id) }
+
+// SyntaxVersion returns the ISO 9735 edition UNB names, 1 to 4, or 0 when it
+// names none or another value.
+func (ix *Interchange) SyntaxVersion() int {
+	v, err := strconv.Atoi(ix.header.Component(1, 2))
+	if err != nil || v < 1 || v > 4 {
+		return 0
+	}
+	return v
+}
+
+// ErrSyntaxVersion reports a syntax version other than 1 to 4.
+var ErrSyntaxVersion = errors.New("edifact: syntax version must be 1 to 4")
+
+// SetSyntaxVersion writes the ISO 9735 edition. It returns ErrSyntaxVersion,
+// and writes nothing, for a version other than 1 to 4.
+func (ix *Interchange) SetSyntaxVersion(v int) error {
+	if v < 1 || v > 4 {
+		return fmt.Errorf("%w: %d", ErrSyntaxVersion, v)
+	}
+	ix.Header().Set(1, 2, strconv.Itoa(v))
+	return nil
+}
 
 // Sender returns the interchange sender identification.
 func (ix *Interchange) Sender() string { return ix.header.Component(2, 1) }
@@ -39,12 +69,6 @@ func (ix *Interchange) AgreementID() string { return ix.header.Element(10) }
 
 // IsTest reports whether the test indicator is set.
 func (ix *Interchange) IsTest() bool { return ix.header.Element(11) == "1" }
-
-// SetSyntax writes the character repertoire and the ISO 9735 edition.
-func (ix *Interchange) SetSyntax(identifier, version string) {
-	ix.Header().Set(1, 1, identifier)
-	ix.Header().Set(1, 2, version)
-}
 
 // SetApplicationRef writes the application reference.
 func (ix *Interchange) SetApplicationRef(ref string) { ix.Header().Set(7, 1, ref) }
@@ -161,7 +185,7 @@ func (g *FunctionalGroup) DateTime() (time.Time, error) {
 // SetDateTime writes t's date and time of preparation, in the formats the
 // interchange's syntax version requires, as Interchange.SetDateTime does.
 func (g *FunctionalGroup) SetDateTime(t time.Time) {
-	version := ""
+	version := 0
 	if g.ix != nil {
 		version = g.ix.SyntaxVersion()
 	}
@@ -248,8 +272,8 @@ func preparedAt(date, hhmm string) (time.Time, error) {
 
 // preparedValues renders t as a date and time of preparation for a syntax
 // version.
-func preparedValues(version string, t time.Time) (date, hhmm string) {
-	if version == "4" {
+func preparedValues(version int, t time.Time) (date, hhmm string) {
+	if version == 4 {
 		return t.Format("20060102"), t.Format("1504")
 	}
 	return t.Format("060102"), t.Format("1504")
@@ -257,8 +281,8 @@ func preparedValues(version string, t time.Time) (date, hhmm string) {
 
 // preparedDateLength is the length of the date of preparation in a syntax
 // version: CCYYMMDD in version 4 and YYMMDD below it.
-func preparedDateLength(version string) int {
-	if version == "4" {
+func preparedDateLength(version int) int {
+	if version == 4 {
 		return 8
 	}
 	return 6
