@@ -72,5 +72,6 @@ Inside a message, segments often form repeating segment groups. In the bayplan, 
 | Specification | The segment table for one message type: which segments and segment groups may appear, in what order, how often. | `Spec`, `Node` |
 | Key | The message type, version, release, agency and association code from `UNH`, which selects a specification. | `Key` |
 | Service segment | A segment that frames or controls the data rather than carrying it, such as `UNB` or `UNH`. Its tag starts with `U`. | header accessors |
+| Syntax level | The character set an interchange uses, named in `UNB`, such as `UNOA` for upper case letters, digits and some punctuation. | `Charset` |
 | Release character | The character that makes the next separator count as text, `?` by default. | `Delimiters.Release` |
 | Diagnostic | A problem found while reading or validating that does not stop the read. | `Diagnostic` |

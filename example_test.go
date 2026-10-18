@@ -547,3 +547,80 @@ func ExampleSegment_Index() {
 	// Output:
 	// DDD [1 2] VALUE
 }
+
+// SetCharset declares the syntax level. Write refuses a value outside it, here
+// lower case in UNOA, and accepts it once the interchange declares UNOB.
+func ExampleInterchange_SetCharset() {
+	ix := edifact.NewInterchange()
+	ix.SetSender("SENDER", "")
+	ix.SetRecipient("RECIPIENT", "")
+	ix.SetDate("260101")
+	ix.SetTime("1200")
+	ix.SetControlRef("REF1")
+	m := ix.AddMessage(edifact.Key{Type: edifact.Is("TSTMSG"), Version: edifact.Is("D"), Release: edifact.Is("95B"), Agency: edifact.Is("UN")})
+	m.SetRef("M1")
+	m.Add("FTX", "AAA", "", "", "Handle with care")
+
+	err := edifact.Write(io.Discard, ix)
+	fmt.Println(errors.Is(err, edifact.ErrCharset), err)
+
+	ix.SetCharset(edifact.UNOB)
+	fmt.Println(edifact.Write(io.Discard, ix))
+	c, _ := ix.Charset()
+	fmt.Println(c)
+	// Output:
+	// true FTX element 4 component 1: edifact: character outside the charset: 'a' (U+0061) is not in UNOA
+	// <nil>
+	// UNOB
+}
+
+// FitCharset converts what it can into the charset. In UNOA that means
+// accented letters lose their accents and lower case becomes upper case.
+func ExampleFitCharset() {
+	ix := edifact.NewInterchange()
+	ix.SetSender("SENDER", "")
+	ix.SetRecipient("RECIPIENT", "")
+	ix.SetDate("260101")
+	ix.SetTime("1200")
+	ix.SetControlRef("REF1")
+	m := ix.AddMessage(edifact.Key{Type: edifact.Is("TSTMSG"), Version: edifact.Is("D"), Release: edifact.Is("95B"), Agency: edifact.Is("UN")})
+	m.SetRef("M1")
+	m.Add("FTX", "AAA", "", "", "Café, Straße")
+
+	var sb strings.Builder
+	if err := edifact.Write(&sb, ix, edifact.FitCharset(), edifact.SegmentSuffixLF()); err != nil {
+		fmt.Println(err)
+		return
+	}
+	for _, line := range strings.Split(sb.String(), "\n") {
+		if strings.HasPrefix(line, "FTX") {
+			fmt.Println(line)
+		}
+	}
+	// Output:
+	// FTX+AAA+++CAFE, STRASSE'
+}
+
+// SetDateTime writes the date of preparation in the format the syntax version
+// requires, and DateTime reads it back without a time zone.
+func ExampleInterchange_SetDateTime() {
+	when := time.Date(2026, 1, 2, 15, 4, 0, 0, time.UTC)
+
+	ix := edifact.NewInterchange()
+	ix.SetDateTime(when)
+	fmt.Println(ix.Date(), ix.Time())
+
+	if err := ix.SetSyntaxVersion(4); err != nil {
+		fmt.Println(err)
+		return
+	}
+	ix.SetDateTime(when)
+	fmt.Println(ix.Date(), ix.Time())
+
+	t, err := ix.DateTime()
+	fmt.Println(t.Format("2006-01-02 15:04"), t.Location(), err)
+	// Output:
+	// 260102 1504
+	// 20260102 1504
+	// 2026-01-02 15:04 UNKNOWN <nil>
+}

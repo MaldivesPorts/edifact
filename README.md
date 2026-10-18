@@ -87,13 +87,15 @@ UNZ+1+REF1'
 
 - [EDIFACT in brief](docs/edifact.md) introduces the format, as well as the terms used by this package.
 - The [package documentation](https://pkg.go.dev/github.com/MaldivesPorts/edifact) covers more options (including defining specs and validating against them), with runnable examples.
+- [CHANGELOG.md](CHANGELOG.md) lists what changed in each version.
 
 ## Known limitations/room for improvement
 
 - **Batch EDIFACT only.** Interactive EDIFACT (`UIB` to `UIZ`) and the syntax version 4 package segments (`UNO`, `UNP`) are not read or written.
-- **Character sets.** `Read` and `Write` pass bytes through unchanged. They neither convert from or to the character set the syntax identifier names, such as ISO 8859-1 for `UNOC`, nor check values against it.
+- **Character sets.** Only `UNOA`, `UNOB`, `UNOC` and `UNOW` are checked and converted. Other syntax levels, such as `UNOD` to `UNOK` (other parts of ISO 8859) and `UNOX` and `UNOY` (ISO 2022 code extension), are read with a warning and written with their values as they are.
+- **Level B separators without a `UNA`.** A file with no `UNA` that uses the level B default separators (IS3 between elements, IS1 between components, IS4 after each segment) is not detected, and needs `DefaultDelimiters`. Detecting them automatically would fix this.
 - **Values are not checked against the directory.** A specification describes segment order, repetition and qualifiers. It does not check element lengths, formats, code list values, or which data elements a segment requires.
-- **Header checks cover presence only.** `Write` refuses empty mandatory header elements but not ones that are too long or in the wrong format, such as a five-digit date.
+- **Header checks are limited.** `Write` refuses empty mandatory header elements and a date of preparation of the wrong length for the syntax version, but checks nothing else about their format, such as a month of 13.
 - **Explicit segment indices go unchecked.** `DDD:1:2` survives a read and a write, but validation does not compare the numbers with the nesting a specification describes.
 - **Date formats.** Only the codes listed under [Numbers and dates](https://pkg.go.dev/github.com/MaldivesPorts/edifact#hdr-Numbers_and_dates) are supported. Time zones written as letters must be `GMT` or `UTC`.
 - **Whole interchanges in memory.** `Read` builds the complete interchange before returning, and `Write` renders all of it before writing. A streaming reader/writer would fix this.

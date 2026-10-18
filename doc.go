@@ -84,6 +84,8 @@
 //     no segments
 //   - below syntax version 4, a message whose type, version, release or
 //     agency differs from its functional group's
+//   - a value holding a character outside the interchange's charset, once per
+//     segment, and a charset this package does not support
 //   - every problem a specification finds
 //
 // Each [Diagnostic] gives its [Severity], the message it concerns and the
@@ -179,8 +181,12 @@
 //
 // # Writing
 //
-// [NewInterchange] returns an interchange with syntax UNOA version 2. Set the
+// [NewInterchange] returns an interchange in [UNOA], syntax version 2. Set the
 // UNB values with its setters, then add messages with [Interchange.AddMessage].
+// [Interchange.SetDateTime] writes the date and time of preparation from a
+// time.Time, in the format the syntax version requires: CCYYMMDD in version 4
+// and YYMMDD below it. [Interchange.SetDate] and [Interchange.SetTime] write
+// them as text.
 // [Message.Add] builds a segment from simple elements and
 // [Message.AddComposite] from a slice of components per element.
 // [Segment.Set], [Segment.SetInt], [Segment.SetFloat] and [Segment.SetTime]
@@ -206,6 +212,9 @@
 //     decimal mark if Delimiters.Decimal is one and a dot otherwise. SetFloat
 //     values use that mark. Values set as text keep theirs.
 //   - escapes separators inside values with the release character
+//   - checks every value against the interchange's charset, and encodes UNOC
+//     values as ISO 8859-1. A character outside the charset gives
+//     [ErrCharset], naming its position.
 //   - drops trailing empty components and elements and trailing spaces, as
 //     ISO 9735 requires
 //   - returns [ErrIncompleteHeader] for a UNB, UNG or UNH missing an element
@@ -213,6 +222,9 @@
 //     group with no messages or a message with no segments, and
 //     [ErrGroupMismatch] below syntax version 4 for a message that differs from
 //     its functional group
+//   - returns [ErrHeaderDate] for a UNB or UNG date whose length does not
+//     match the syntax version, and [ErrSyntaxVersion] for UNOW below
+//     version 4
 //   - writes nothing if any of this fails
 //
 // [Registry.Write] and [WriteWithSpec] validate every message first. They drop
@@ -227,6 +239,8 @@
 //   - [AllowIncompleteHeaders] writes headers missing mandatory elements.
 //   - [RejectWriteOn] returns the first diagnostic at or above a severity as an
 //     error. Default: [Error].
+//   - [FitCharset] converts characters outside the charset where it can, rather
+//     than refusing them. Default: off.
 //
 // # Reading and writing back
 //
@@ -248,12 +262,35 @@
 // space in the release position means there is none, and writing a value that
 // holds a separator then returns [ErrUnreleasable].
 //
-// The first component of UNB names the syntax level, mostly a character set.
-// Read reads any level when the file starts with a UNA. Without one, it
+// The first component of UNB names the syntax level, which is mostly a
+// character set, a [Charset]. Read reads any level when the file starts with a
+// UNA. Without one, it
 // understands the level A separators ' + : ?, plus * as the repetition
 // separator in syntax version 4, or the separators given with
 // [DefaultDelimiters]. A file without a UNA that uses the level B separators
 // otherwise gives [ErrUnsupportedSeparators].
+//
+// # Charsets
+//
+// A [Charset] is one of the syntax levels this package reads and writes:
+//
+//	UNOA  level A: upper case A to Z, digits, space and . , - ( ) / = ' + : ?
+//	      ! " % & * ; < >
+//	UNOB  level B: level A and lower case a to z
+//	UNOC  level C: ISO 8859-1
+//	UNOW  level W: UTF-8, syntax version 4 only
+//
+// [Interchange.SetCharset] and [Interchange.Charset] write and read it. Values
+// in a Segment are always Go strings in UTF-8. Read decodes UNOC from
+// ISO 8859-1 and Write encodes it back. Write refuses a value holding a
+// character outside the charset, and Read reports one as a warning. The level A
+// service characters ' + : ? may appear in values, and Write releases them where
+// they clash with the separators.
+//
+// With [FitCharset], Write first converts what it can: an accented Latin-1
+// letter becomes its base letter, such as é to e, Æ to AE and ß to ss, and in
+// UNOA lower case becomes upper case. A file naming another syntax level, such
+// as UNOD, is read with a warning and written with its values as they are.
 //
 // # Repetitions
 //
