@@ -15,6 +15,16 @@ type writeConfig struct {
 	suffix          string
 	allowIncomplete bool
 	rejectAt        Severity
+	fit             bool
+}
+
+// FitCharset makes Write convert characters outside the interchange's charset
+// where it can, rather than refusing them. An accented Latin-1 letter becomes
+// its base letter, such as é to e, Æ to AE and ß to ss, and in UNOA lower case
+// becomes upper case. Characters it cannot convert, such as € in UNOA, are
+// still refused with ErrCharset. By default, Write converts nothing.
+func FitCharset() WriteOption {
+	return func(c *writeConfig) { c.fit = true }
 }
 
 // RejectWriteOn makes Write return the first diagnostic of severity s or
@@ -124,7 +134,7 @@ func (r *Registry) Write(w io.Writer, ix *Interchange, opts ...WriteOption) erro
 	// cannot be represented leaves w untouched.
 	rendered := make([]string, len(segs))
 	for i, s := range segs {
-		if rendered[i], err = formatSegment(s, d, cs); err != nil {
+		if rendered[i], err = formatSegment(s, d, cs, cfg.fit); err != nil {
 			return err
 		}
 	}
@@ -148,16 +158,16 @@ func (r *Registry) Write(w io.Writer, ix *Interchange, opts ...WriteOption) erro
 
 // formatSegment renders one segment, escaping values and dropping trailing
 // empty components and elements, which carry no meaning.
-func formatSegment(s *Segment, d Delimiters, cs Charset) (string, error) {
-	elems, err := renderElements(s, d, cs)
+func formatSegment(s *Segment, d Delimiters, cs Charset, fit bool) (string, error) {
+	elems, err := renderElements(s, d, cs, fit)
 	if err != nil {
 		return "", err
 	}
-	if _, err := cs.encode(s.Tag); err != nil {
+	if _, err := cs.encode(s.Tag, false); err != nil {
 		return "", fmt.Errorf("tag %s: %w", s.Tag, err)
 	}
 	for i, idx := range s.index {
-		if _, err := cs.encode(idx); err != nil {
+		if _, err := cs.encode(idx, false); err != nil {
 			return "", fmt.Errorf("%s index %d: %w", s.Tag, i+1, err)
 		}
 	}
@@ -183,7 +193,7 @@ func formatSegment(s *Segment, d Delimiters, cs Charset) (string, error) {
 	return sb.String(), nil
 }
 
-func renderElements(s *Segment, d Delimiters, cs Charset) ([]string, error) {
+func renderElements(s *Segment, d Delimiters, cs Charset, fit bool) ([]string, error) {
 	out := make([]string, len(s.elements))
 	for i, e := range s.elements {
 		reps := make([]string, len(e))
@@ -195,7 +205,7 @@ func renderElements(s *Segment, d Delimiters, cs Charset) ([]string, error) {
 				if r == 0 && d.Decimal == ',' && s.floats[[2]int{i + 1, j + 1}] {
 					c = strings.Replace(c, ".", ",", 1)
 				}
-				c, err := cs.encode(c)
+				c, err := cs.encode(c, fit)
 				if err != nil {
 					return nil, fmt.Errorf("%s element %d component %d: %w", s.Tag, i+1, j+1, err)
 				}

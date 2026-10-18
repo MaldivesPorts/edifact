@@ -62,14 +62,18 @@ func (c Charset) allows(r rune) bool {
 }
 
 // encode returns v as the charset writes it: unchanged for UNOA, UNOB and
-// UNOW, and as ISO 8859-1 bytes for UNOC. It reports the first character
-// outside the charset, or invalid UTF-8.
-func (c Charset) encode(v string) (string, error) {
+// UNOW, and as ISO 8859-1 bytes for UNOC. With fit, characters outside the
+// charset are first converted where fit knows how. It reports the first
+// character still outside the charset, or invalid UTF-8.
+func (c Charset) encode(v string, fit bool) (string, error) {
 	if c == (Charset{}) {
 		return v, nil
 	}
 	if !utf8.ValidString(v) {
 		return "", fmt.Errorf("%w: %q is not valid UTF-8", ErrCharset, v)
+	}
+	if fit {
+		v = c.fit(v)
 	}
 	for _, r := range v {
 		if !c.allows(r) {
@@ -84,4 +88,41 @@ func (c Charset) encode(v string) (string, error) {
 		b = append(b, byte(r))
 	}
 	return string(b), nil
+}
+
+// fit converts the characters of v that are outside the charset where it can:
+// an accented Latin-1 letter to its base letter, and for UNOA a lower case
+// letter to upper case. Other characters are left for encode to refuse.
+func (c Charset) fit(v string) string {
+	var sb strings.Builder
+	for _, r := range v {
+		if c.allows(r) {
+			sb.WriteRune(r)
+			continue
+		}
+		s := string(r)
+		if base, ok := latin1Base[r]; ok {
+			s = base
+		}
+		if c == UNOA {
+			s = strings.ToUpper(s)
+		}
+		sb.WriteString(s)
+	}
+	return sb.String()
+}
+
+// latin1Base maps each ISO 8859-1 letter from 0xC0 to 0xFF to its base
+// letters.
+var latin1Base = map[rune]string{
+	'À': "A", 'Á': "A", 'Â': "A", 'Ã': "A", 'Ä': "A", 'Å': "A", 'Æ': "AE",
+	'Ç': "C", 'È': "E", 'É': "E", 'Ê': "E", 'Ë': "E",
+	'Ì': "I", 'Í': "I", 'Î': "I", 'Ï': "I", 'Ð': "D", 'Ñ': "N",
+	'Ò': "O", 'Ó': "O", 'Ô': "O", 'Õ': "O", 'Ö': "O", 'Ø': "O",
+	'Ù': "U", 'Ú': "U", 'Û': "U", 'Ü': "U", 'Ý': "Y", 'Þ': "TH", 'ß': "ss",
+	'à': "a", 'á': "a", 'â': "a", 'ã': "a", 'ä': "a", 'å': "a", 'æ': "ae",
+	'ç': "c", 'è': "e", 'é': "e", 'ê': "e", 'ë': "e",
+	'ì': "i", 'í': "i", 'î': "i", 'ï': "i", 'ð': "d", 'ñ': "n",
+	'ò': "o", 'ó': "o", 'ô': "o", 'õ': "o", 'ö': "o", 'ø': "o",
+	'ù': "u", 'ú': "u", 'û': "u", 'ü': "u", 'ý': "y", 'þ': "th", 'ÿ': "y",
 }
