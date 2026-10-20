@@ -9,8 +9,7 @@ import (
 	"strings"
 )
 
-// ReadOption adjusts how an interchange is read. See [RejectReadOn],
-// [MaxSegmentSize] and [DefaultDelimiters].
+// ReadOption adjusts how an interchange is read.
 type ReadOption func(*readConfig)
 
 type readConfig struct {

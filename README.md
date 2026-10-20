@@ -1,12 +1,10 @@
 # edifact
 
-A Go library for reading and writing UN/EDIFACT interchanges, the message format ISO 9735 defines.
+A Go library for reading and writing UN/EDIFACT interchanges. It needs Go 1.22 or later.
 
 ```
 go get github.com/MaldivesPorts/edifact
 ```
-
-It needs Go 1.22 or later and has no dependencies outside the standard library.
 
 ## Quick start
 

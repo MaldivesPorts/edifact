@@ -6,9 +6,7 @@ import (
 	"strings"
 )
 
-// WriteOption adjusts how an interchange is serialised. See
-// [SegmentSuffixLF], [SegmentSuffixCRLF], [AllowIncompleteHeaders] and
-// [RejectWriteOn].
+// WriteOption adjusts how an interchange is serialised.
 type WriteOption func(*writeConfig)
 
 type writeConfig struct {

@@ -8,8 +8,7 @@ import (
 )
 
 // Charset is a syntax level this package reads and writes, named by the syntax
-// identifier in UNB. Only the package's own values exist: UNOA, UNOB, UNOC and
-// UNOW.
+// identifier in UNB. Only the package's own values exist.
 type Charset struct{ id string }
 
 var (

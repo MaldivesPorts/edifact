@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// Severity ranks a diagnostic as a warning or an error.
+// Severity ranks a diagnostic.
 type Severity int
 
 const (

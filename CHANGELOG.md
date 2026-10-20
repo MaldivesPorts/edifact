@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.1 (2026-10-20)
+
+Documentation only.
+
 ## v0.2.0 (2026-10-18)
 
 ### Changed (breaking)
