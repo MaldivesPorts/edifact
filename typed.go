@@ -130,18 +130,44 @@ func (s *Segment) SetInt(elem, comp int, v int) {
 	s.Set(elem, comp, strconv.Itoa(v))
 }
 
+// DateFormat is a date or time format qualifier from code list 2379, such as
+// 203 for CCYYMMDDHHMM. The constants are the formats the package decodes,
+// named after their layouts. A qualifier read from a message converts with
+// DateFormat(code), and one the package does not decode gives [ErrDateFormat].
+type DateFormat string
+
+const (
+	FormatDDMMYY             DateFormat = "2"
+	FormatMMDDYY             DateFormat = "3"
+	FormatYYMMDD             DateFormat = "101"
+	FormatCCYYMMDD           DateFormat = "102"
+	FormatYYMMDDHHMM         DateFormat = "201"
+	FormatYYMMDDHHMMSS       DateFormat = "202"
+	FormatCCYYMMDDHHMM       DateFormat = "203"
+	FormatCCYYMMDDHHMMSS     DateFormat = "204"
+	FormatCCYYMMDDHHMMZHHMM  DateFormat = "205"
+	FormatYYMMDDHHMMZZZ      DateFormat = "301"
+	FormatHHMM               DateFormat = "401"
+	FormatHHMMSS             DateFormat = "402"
+	FormatHHMMSSZZZ          DateFormat = "404"
+	FormatCCYY               DateFormat = "602"
+	FormatCCYYMM             DateFormat = "610"
+	FormatCCYYMMDDPeriod     DateFormat = "718"
+	FormatCCYYMMDDHHMMPeriod DateFormat = "719"
+)
+
 // Time reads component comp of element elem, both counting from 1, as a date
 // and time, taking its format qualifier from the component after it. That is
 // the layout of composite C507, where a DTM carries the qualifier, the value
 // and the format in one element.
 func (s *Segment) Time(elem, comp int) (time.Time, error) {
-	return s.TimeIn(elem, comp, s.Component(elem, comp+1))
+	return s.TimeIn(elem, comp, DateFormat(s.Component(elem, comp+1)))
 }
 
 // TimeIn reads component comp of element elem, both counting from 1, as a date
 // and time in the given format, for segments that do not carry the format
 // qualifier beside the value.
-func (s *Segment) TimeIn(elem, comp int, format string) (time.Time, error) {
+func (s *Segment) TimeIn(elem, comp int, format DateFormat) (time.Time, error) {
 	v := s.Component(elem, comp)
 	if v == "" {
 		return time.Time{}, ErrEmpty
@@ -150,11 +176,10 @@ func (s *Segment) TimeIn(elem, comp int, format string) (time.Time, error) {
 }
 
 // SetTime writes t in the given format to component comp of element elem, both
-// counting from 1, and the format qualifier to the component after it. For
-// formats 301 and 404, whose zone is written as letters, it converts t to UTC
-// and writes UTC. For other formats it writes t's own clock, and for 205 its
-// offset as well.
-func (s *Segment) SetTime(elem, comp int, t time.Time, format string) error {
+// counting from 1, and the format qualifier to the component after it. It
+// writes t's own clock, and its offset when the format carries one. A format
+// whose zone is written as letters gets t in UTC.
+func (s *Segment) SetTime(elem, comp int, t time.Time, format DateFormat) error {
 	f, ok := dateFormats[format]
 	if !ok {
 		return fmt.Errorf("%w: %q", ErrDateFormat, format)
@@ -163,11 +188,11 @@ func (s *Segment) SetTime(elem, comp int, t time.Time, format string) error {
 		return fmt.Errorf("%w: %q", ErrDateRange, format)
 	}
 	v := t.Format(f.layout)
-	if zonedFormats[format] {
+	if f.zoned {
 		v = t.UTC().Format(f.layout) + "UTC"
 	}
 	s.Set(elem, comp, v)
-	s.Set(elem, comp+1, format)
+	s.Set(elem, comp+1, string(format))
 	return nil
 }
 
@@ -178,12 +203,13 @@ func (s *Segment) TimeRange(elem, comp int) (start, end time.Time, err error) {
 	if v == "" {
 		return time.Time{}, time.Time{}, ErrEmpty
 	}
-	return ParseTimeRange(v, s.Component(elem, comp+1))
+	return ParseTimeRange(v, DateFormat(s.Component(elem, comp+1)))
 }
 
-// ParseTimeRange decodes a value against a format qualifier naming a period,
-// such as 718 or 719. The two halves may be joined by a hyphen or run together.
-func ParseTimeRange(value, format string) (start, end time.Time, err error) {
+// ParseTimeRange decodes a value against a format naming a period, such as
+// [FormatCCYYMMDDPeriod]. The two halves may be joined by a hyphen or run
+// together.
+func ParseTimeRange(value string, format DateFormat) (start, end time.Time, err error) {
 	if value == "" {
 		return time.Time{}, time.Time{}, ErrEmpty
 	}
@@ -216,13 +242,13 @@ func ParseTimeRange(value, format string) (start, end time.Time, err error) {
 	return start, end, nil
 }
 
-// ParseTime decodes a value against a date format qualifier from code list
-// 2379. A format with no time zone gives a time in UnknownTimezone. A zone
-// written as GMT or UTC gives UTC, and an offset gives that offset.
+// ParseTime decodes a value against a [DateFormat]. A format with no time zone
+// gives a time in UnknownTimezone. A zone written as GMT or UTC gives UTC, and
+// an offset gives that offset.
 //
 // Two-digit years follow the Go convention, so 00 to 68 read as 2000 to 2068
 // and 69 to 99 as 1969 to 1999.
-func ParseTime(value, format string) (time.Time, error) {
+func ParseTime(value string, format DateFormat) (time.Time, error) {
 	if value == "" {
 		return time.Time{}, ErrEmpty
 	}
@@ -233,7 +259,7 @@ func ParseTime(value, format string) (time.Time, error) {
 	if f.parts == 2 {
 		return time.Time{}, fmt.Errorf("%w: %q", ErrDateRange, format)
 	}
-	if zonedFormats[format] {
+	if f.zoned {
 		return parseZoned(value, format, f.layout)
 	}
 	t, err := parseLayout(f.layout, value)
@@ -259,7 +285,7 @@ func parseLayout(layout, v string) (time.Time, error) {
 }
 
 // parseZoned decodes a value ending in a three-letter time zone.
-func parseZoned(value, format, layout string) (time.Time, error) {
+func parseZoned(value string, format DateFormat, layout string) (time.Time, error) {
 	if len(value) < 3 {
 		return time.Time{}, fmt.Errorf("edifact: format %s: value %q has no time zone", format, value)
 	}
@@ -282,32 +308,28 @@ func parseZoned(value, format, layout string) (time.Time, error) {
 type dateFormat struct {
 	layout string
 	parts  int
+	// zoned is true for a format ending in a time zone written as three
+	// letters, such as GMT. The layout covers everything before it.
+	zoned bool
 }
 
 // dateFormats maps code list 2379 qualifiers to Go layouts.
-var dateFormats = map[string]dateFormat{
-	"2":   {"020106", 1},            // DDMMYY
-	"3":   {"010206", 1},            // MMDDYY
-	"101": {"060102", 1},            // YYMMDD
-	"102": {"20060102", 1},          // CCYYMMDD
-	"201": {"0601021504", 1},        // YYMMDDHHMM
-	"202": {"060102150405", 1},      // YYMMDDHHMMSS
-	"203": {"200601021504", 1},      // CCYYMMDDHHMM
-	"204": {"20060102150405", 1},    // CCYYMMDDHHMMSS
-	"205": {"200601021504-0700", 1}, // CCYYMMDDHHMMZHHMM
-	"301": {"0601021504", 1},        // YYMMDDHHMMZZZ
-	"401": {"1504", 1},              // HHMM
-	"402": {"150405", 1},            // HHMMSS
-	"404": {"150405", 1},            // HHMMSSZZZ
-	"602": {"2006", 1},              // CCYY
-	"610": {"200601", 1},            // CCYYMM
-	"718": {"20060102", 2},          // CCYYMMDD-CCYYMMDD
-	"719": {"200601021504", 2},      // CCYYMMDDHHMM-CCYYMMDDHHMM
-}
-
-// zonedFormats end in a time zone written as three letters, such as GMT. The
-// layout in dateFormats covers everything before it.
-var zonedFormats = map[string]bool{
-	"301": true,
-	"404": true,
+var dateFormats = map[DateFormat]dateFormat{
+	FormatDDMMYY:             {"020106", 1, false},
+	FormatMMDDYY:             {"010206", 1, false},
+	FormatYYMMDD:             {"060102", 1, false},
+	FormatCCYYMMDD:           {"20060102", 1, false},
+	FormatYYMMDDHHMM:         {"0601021504", 1, false},
+	FormatYYMMDDHHMMSS:       {"060102150405", 1, false},
+	FormatCCYYMMDDHHMM:       {"200601021504", 1, false},
+	FormatCCYYMMDDHHMMSS:     {"20060102150405", 1, false},
+	FormatCCYYMMDDHHMMZHHMM:  {"200601021504-0700", 1, false},
+	FormatYYMMDDHHMMZZZ:      {"0601021504", 1, true},
+	FormatHHMM:               {"1504", 1, false},
+	FormatHHMMSS:             {"150405", 1, false},
+	FormatHHMMSSZZZ:          {"150405", 1, true},
+	FormatCCYY:               {"2006", 1, false},
+	FormatCCYYMM:             {"200601", 1, false},
+	FormatCCYYMMDDPeriod:     {"20060102", 2, false},
+	FormatCCYYMMDDHHMMPeriod: {"200601021504", 2, false},
 }

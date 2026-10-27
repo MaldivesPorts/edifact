@@ -188,6 +188,37 @@ func ExampleSegment_Time() {
 	// 2026-01-01T12:00:00Z <nil>
 }
 
+// SetTime writes a time and its format qualifier into a DTM's composite, the
+// layout Time reads back.
+func ExampleSegment_SetTime() {
+	ix := edifact.NewInterchange()
+	m := ix.AddMessage(edifact.Key{})
+	dtm := m.Add("DTM", "137")
+
+	when := time.Date(2026, 1, 2, 15, 4, 0, 0, time.UTC)
+	if err := dtm.SetTime(1, 2, when, edifact.FormatCCYYMMDDHHMM); err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(dtm.Components(1))
+	// Output:
+	// [137 202601021504 203]
+}
+
+// A format qualifier read from a message converts to a DateFormat. One the
+// package does not decode gives ErrDateFormat.
+func ExampleDateFormat() {
+	for _, code := range []string{"102", "999"} {
+		t, err := edifact.ParseTime("20260102", edifact.DateFormat(code))
+		fmt.Println(code, t.Format("2006-01-02"), errors.Is(err, edifact.ErrDateFormat))
+	}
+	fmt.Println(edifact.FormatCCYYMMDD == "102")
+	// Output:
+	// 102 2026-01-02 false
+	// 999 0001-01-01 true
+	// true
+}
+
 // Float accepts a dot or a comma as the decimal mark, and rejects anything
 // ISO 9735 does not allow as a number.
 func ExampleSegment_Float() {

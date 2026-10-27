@@ -37,24 +37,27 @@
 //
 // [Segment.Time] reads a date in the format named by the component after it,
 // the layout DTM uses. [Segment.TimeIn] takes the format as an argument, and
-// [ParseTime] works on a plain string. These codes from code list 2379 are
-// supported:
+// [ParseTime] works on a plain string. These formats are supported, each a
+// [DateFormat] constant:
 //
-//	2    DDMMYY                301  YYMMDDHHMMZZZ
-//	3    MMDDYY                401  HHMM
-//	101  YYMMDD                402  HHMMSS
-//	102  CCYYMMDD              404  HHMMSSZZZ
-//	201  YYMMDDHHMM            602  CCYY
-//	202  YYMMDDHHMMSS          610  CCYYMM
-//	203  CCYYMMDDHHMM          718  CCYYMMDD-CCYYMMDD
-//	204  CCYYMMDDHHMMSS        719  CCYYMMDDHHMM-CCYYMMDDHHMM
-//	205  CCYYMMDDHHMMZHHMM
+//	2    FormatDDMMYY               301  FormatYYMMDDHHMMZZZ
+//	3    FormatMMDDYY               401  FormatHHMM
+//	101  FormatYYMMDD               402  FormatHHMMSS
+//	102  FormatCCYYMMDD             404  FormatHHMMSSZZZ
+//	201  FormatYYMMDDHHMM           602  FormatCCYY
+//	202  FormatYYMMDDHHMMSS         610  FormatCCYYMM
+//	203  FormatCCYYMMDDHHMM         718  FormatCCYYMMDDPeriod
+//	204  FormatCCYYMMDDHHMMSS       719  FormatCCYYMMDDHHMMPeriod
+//	205  FormatCCYYMMDDHHMMZHHMM
+//
+// A qualifier read from a message converts with DateFormat(code). Any other
+// gives [ErrDateFormat].
 //
 // ZZZ is a time zone written as letters. Time reads GMT and UTC as UTC, and
 // returns [ErrDateZone] for any other zone. A time from a format without a zone
 // keeps its digits as written and comes back in [UnknownTimezone], so a caller
 // can attach the right zone. [Segment.TimeRange] and [ParseTimeRange] read the
-// range formats 718 and 719.
+// formats that name a period.
 //
 // # Filler
 //

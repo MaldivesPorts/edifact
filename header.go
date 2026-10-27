@@ -263,9 +263,9 @@ func preparedAt(date, hhmm string) (time.Time, error) {
 	case 0:
 		return time.Time{}, ErrEmpty
 	case 6:
-		return ParseTime(date+hhmm, "201")
+		return ParseTime(date+hhmm, FormatYYMMDDHHMM)
 	case 8:
-		return ParseTime(date+hhmm, "203")
+		return ParseTime(date+hhmm, FormatCCYYMMDDHHMM)
 	}
 	return time.Time{}, fmt.Errorf("%w: date of preparation %q is neither YYMMDD nor CCYYMMDD", ErrDateFormat, date)
 }

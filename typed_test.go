@@ -77,8 +77,9 @@ func TestTimeReadsAdjacentFormat(t *testing.T) {
 
 func TestParseTimeFormats(t *testing.T) {
 	cases := []struct {
-		format, value string
-		want          time.Time
+		format DateFormat
+		value  string
+		want   time.Time
 	}{
 		{"101", "260113", time.Date(2026, 1, 13, 0, 0, 0, 0, time.UTC)},
 		{"102", "20260113", time.Date(2026, 1, 13, 0, 0, 0, 0, time.UTC)},
@@ -183,7 +184,8 @@ func TestSetFloat(t *testing.T) {
 
 func TestParseTimeRange(t *testing.T) {
 	cases := []struct {
-		format, value  string
+		format         DateFormat
+		value          string
 		wantLo, wantHi time.Time
 	}{
 		{"718", "2026011320260114",
@@ -345,8 +347,9 @@ func TestSetFloatRefusesNonFiniteValues(t *testing.T) {
 
 func TestTimesWithoutAZoneAreInUnknownTimezone(t *testing.T) {
 	cases := []struct {
-		value, format string
-		want          *time.Location
+		value  string
+		format DateFormat
+		want   *time.Location
 	}{
 		{"202601011200", "203", UnknownTimezone},
 		{"260101", "101", UnknownTimezone},
@@ -382,7 +385,10 @@ func TestTimesWithoutAZoneAreInUnknownTimezone(t *testing.T) {
 }
 
 func TestParseTimeAcceptsOnlyDigits(t *testing.T) {
-	for _, c := range []struct{ value, format string }{
+	for _, c := range []struct {
+		value  string
+		format DateFormat
+	}{
 		{"+10101", "101"}, {"-10101", "101"}, {"+1010112", "201"}, {"+10101", "2"},
 		{"+101011200UTC", "301"}, {" 60101", "101"}, {"20260101120+0000", "205"},
 		{"20260101-2026010+", "718"},
@@ -396,7 +402,10 @@ func TestParseTimeAcceptsOnlyDigits(t *testing.T) {
 			}
 		}
 	}
-	for _, c := range []struct{ value, format string }{
+	for _, c := range []struct {
+		value  string
+		format DateFormat
+	}{
 		{"260101", "101"}, {"202601011200+0500", "205"}, {"202601011200-0130", "205"}, {"2601011200GMT", "301"},
 	} {
 		if _, err := ParseTime(c.value, c.format); err != nil {
