@@ -51,6 +51,8 @@ type Diagnostic struct {
 	SegmentIdx int
 	// Message describes the problem.
 	Message string
+	// Err is the error behind a value [Fields] could not convert, and nil otherwise.
+	Err error
 }
 
 // String renders the diagnostic on one line, such as

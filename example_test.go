@@ -252,12 +252,14 @@ UNZ+1+REF1'`
 	}
 	for _, d := range f.Diagnostics {
 		fmt.Println(d)
+		fmt.Println("not a number:", errors.Is(d.Err, edifact.ErrNumeric))
 	}
 	// Output:
 	// 2026-01-01 12:00
 	// 0010204 12000
 	// 0010206 0
 	// warning: message 1 (M1), segment 8, /SG2/MEA+WT: weight: element 3 component 2: not a valid EDIFACT numeric value: "8.500,5"
+	// not a number: true
 }
 
 // Addf records a problem the caller finds, such as a value that is missing

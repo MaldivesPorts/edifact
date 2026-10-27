@@ -90,7 +90,7 @@ func (f *Fields) TimeRange(s *Segment, elem, comp int, what string) (start, end 
 // and args, for a problem only the caller can see, such as a value that another
 // value makes necessary. A nil s records it against the message as a whole.
 func (f *Fields) Addf(s *Segment, format string, args ...any) {
-	f.add(s, fmt.Sprintf(format, args...))
+	f.add(s, fmt.Sprintf(format, args...), nil)
 }
 
 // check records a warning for err, naming what and the position.
@@ -102,12 +102,12 @@ func (f *Fields) check(s *Segment, elem, comp int, what string, err error) {
 	if what != "" {
 		msg = what + ": " + msg
 	}
-	f.add(s, msg)
+	f.add(s, msg, err)
 }
 
 // add records a warning at s, located in f's message when there is one.
-func (f *Fields) add(s *Segment, msg string) {
-	d := Diagnostic{Severity: Warning, Message: msg}
+func (f *Fields) add(s *Segment, msg string, err error) {
+	d := Diagnostic{Severity: Warning, Message: msg, Err: err}
 	if s != nil {
 		d.Tag, d.Qualifier = s.Tag, s.Qualifier()
 	}

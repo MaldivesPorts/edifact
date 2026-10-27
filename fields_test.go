@@ -1,6 +1,7 @@
 package edifact
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -89,9 +90,15 @@ func TestFieldsRecordsLocatedWarnings(t *testing.T) {
 	if len(f.Diagnostics) != len(want) {
 		t.Fatalf("got %d diagnostics, want %d: %v", len(f.Diagnostics), len(want), f.Diagnostics)
 	}
+	wantErr := []error{ErrNumeric, ErrNumeric, nil, nil}
 	for i, d := range f.Diagnostics {
+		err := d.Err
+		d.Err = nil
 		if d != want[i] {
 			t.Errorf("diagnostic %d:\n got  %+v\n want %+v", i, d, want[i])
+		}
+		if err == nil || (wantErr[i] != nil && !errors.Is(err, wantErr[i])) {
+			t.Errorf("diagnostic %d: Err = %v, want one wrapping %v", i, err, wantErr[i])
 		}
 	}
 }
@@ -144,7 +151,8 @@ func TestFieldsTimeInUnknownFormat(t *testing.T) {
 	m := readFields(t)
 	f := NewFields(m)
 	f.TimeIn(m.Find("BGM", ""), 2, 1, "999", "reference")
-	if len(f.Diagnostics) != 1 || f.Diagnostics[0].Message != `reference: element 2 component 1: unknown date format qualifier: "999"` {
+	if len(f.Diagnostics) != 1 || f.Diagnostics[0].Message != `reference: element 2 component 1: unknown date format qualifier: "999"` ||
+		!errors.Is(f.Diagnostics[0].Err, ErrDateFormat) {
 		t.Errorf("diagnostics: %v", f.Diagnostics)
 	}
 }
@@ -155,6 +163,9 @@ func TestFieldsAddf(t *testing.T) {
 	f.Addf(m.FindGroup("SG2").Find("LOC", "147"), "cell %s: no port of loading", "0010204")
 	f.Addf(nil, "no transport details")
 
+	if f.Diagnostics[0].Err != nil || f.Diagnostics[1].Err != nil {
+		t.Error("Addf set Err")
+	}
 	got := []string{f.Diagnostics[0].String(), f.Diagnostics[1].String()}
 	want := []string{
 		"warning: message 2 (M2), segment 4, /SG2/LOC+147: cell 0010204: no port of loading",

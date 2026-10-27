@@ -77,7 +77,8 @@
 //
 // An absent segment or an empty position gives the zero value and records
 // nothing. Each warning is a [Diagnostic] naming the message, the segment and
-// its segment groups, followed by the caller's label for the value.
+// its segment groups, followed by the caller's label for the value. Its Err
+// holds the conversion error, so errors can be compared with errors.Is later.
 // [Fields.Addf] records a problem only the caller can see, such as one value
 // missing where another makes it necessary.
 //
