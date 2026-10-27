@@ -82,6 +82,28 @@
 // [Fields.Addf] records a problem only the caller can see, such as one value
 // missing where another makes it necessary.
 //
+// # Reading into and writing from types
+//
+// A type that implements [Unmarshaler] reads itself from a message, and one
+// that implements [Marshaler] writes itself into one. A type may implement
+// either or both. Its methods choose every segment, code and format, so the
+// mapping stays in the caller's code:
+//
+//	func (h *Header) UnmarshalEDIFACT(m *edifact.Message, f *edifact.Fields) error {
+//		h.Number = m.Find("BGM", "").Element(2)
+//		h.Date = f.Time(m.Find("DTM", "137"), 1, 2, "document date")
+//		return nil
+//	}
+//
+//	func (h Header) MarshalEDIFACT(m *edifact.Message) error {
+//		m.Add("BGM", "", h.Number, "9")
+//		return m.Add("DTM", "137").SetTime(1, 2, h.Date, edifact.FormatCCYYMMDDHHMM)
+//	}
+//
+// [Unmarshal] calls UnmarshalEDIFACT with a [Fields] located in the message
+// and returns the diagnostics it collected. [Marshal] calls MarshalEDIFACT.
+// Write with a registry then checks the result against its spec.
+//
 // # Filler
 //
 // Read skips whitespace, control characters such as STX and ETX, and a UTF-8
@@ -219,9 +241,8 @@
 // [Segment.Set], [Segment.SetInt], [Segment.SetFloat] and [Segment.SetTime]
 // write one component of an existing segment, extending it as needed.
 //
-// For formats 301 and 404, whose zone is written as letters, SetTime converts
-// the time to UTC and writes UTC. For other formats it writes the time's own
-// clock, and for 205 its own offset as well.
+// SetTime writes the time's own clock, and its offset when the format carries
+// one. A format whose zone is written as letters gets the time in UTC.
 //
 // [Interchange.AddMessageTo] puts a message in a functional group from
 // [Interchange.AddFunctionalGroup]. Write writes functional groups in the order
