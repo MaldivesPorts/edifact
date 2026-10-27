@@ -26,7 +26,8 @@ func (s Severity) String() string {
 	return "warning"
 }
 
-// Diagnostic locates a structural violation within an interchange.
+// Diagnostic locates a problem within an interchange: a structural violation
+// found by Read or validation, or a value [Fields] could not convert.
 type Diagnostic struct {
 	// Severity is Warning or Error.
 	Severity Severity
@@ -39,7 +40,7 @@ type Diagnostic struct {
 	// and is empty at the top level of a message or for the envelope.
 	Path string
 	// Tag is the segment tag, or the segment group's name when a whole
-	// segment group is at fault.
+	// segment group is at fault. It is empty when no segment is named.
 	Tag string
 	// Qualifier is element 1 of the segment, or the qualifier a spec expected.
 	Qualifier string
@@ -55,25 +56,31 @@ type Diagnostic struct {
 // String renders the diagnostic on one line, such as
 // "error: message 1 (M1), segment 4, DTM+137: required segment is missing".
 func (d Diagnostic) String() string {
+	var at []string
+	if d.MessageIdx > 0 {
+		at = append(at, fmt.Sprintf("message %d (%s)", d.MessageIdx, d.MessageRef))
+	}
+	if d.SegmentIdx > 0 {
+		at = append(at, fmt.Sprintf("segment %d", d.SegmentIdx))
+	}
+	if d.Tag != "" {
+		what := d.Tag
+		if d.Path != "" {
+			what = d.Path + "/" + what
+		}
+		if d.Qualifier != "" {
+			what += "+" + d.Qualifier
+		}
+		at = append(at, what)
+	}
+
 	var sb strings.Builder
 	sb.WriteString(d.Severity.String())
 	sb.WriteString(": ")
-	if d.MessageIdx > 0 {
-		fmt.Fprintf(&sb, "message %d (%s), ", d.MessageIdx, d.MessageRef)
+	if len(at) > 0 {
+		sb.WriteString(strings.Join(at, ", "))
+		sb.WriteString(": ")
 	}
-	if d.SegmentIdx > 0 {
-		fmt.Fprintf(&sb, "segment %d, ", d.SegmentIdx)
-	}
-	if d.Path != "" {
-		sb.WriteString(d.Path)
-		sb.WriteByte('/')
-	}
-	sb.WriteString(d.Tag)
-	if d.Qualifier != "" {
-		sb.WriteByte('+')
-		sb.WriteString(d.Qualifier)
-	}
-	sb.WriteString(": ")
 	sb.WriteString(d.Message)
 	return sb.String()
 }

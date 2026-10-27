@@ -43,12 +43,22 @@ func (s *Segment) Float(elem, comp int) (float64, error) {
 	if v == "" {
 		return 0, ErrEmpty
 	}
+	f, err := parseFloat(v)
+	if err != nil {
+		return 0, fmt.Errorf("edifact: element %d component %d: %w", elem, comp, err)
+	}
+	return f, nil
+}
+
+// parseFloat reads v as an ISO 9735 numeric, giving 0 for one that will not
+// convert.
+func parseFloat(v string) (float64, error) {
 	if !isNumeric(v) {
-		return 0, fmt.Errorf("edifact: element %d component %d: %w: %q", elem, comp, ErrNumeric, v)
+		return 0, fmt.Errorf("%w: %q", ErrNumeric, v)
 	}
 	f, err := strconv.ParseFloat(strings.Replace(v, ",", ".", 1), 64)
 	if err != nil {
-		return 0, fmt.Errorf("edifact: element %d component %d: %w", elem, comp, err)
+		return 0, err
 	}
 	return f, nil
 }
@@ -95,12 +105,21 @@ func (s *Segment) Int(elem, comp int) (int, error) {
 	if v == "" {
 		return 0, ErrEmpty
 	}
+	n, err := parseInt(v)
+	if err != nil {
+		return 0, fmt.Errorf("edifact: element %d component %d: %w", elem, comp, err)
+	}
+	return n, nil
+}
+
+// parseInt reads v as a whole number, giving 0 for one that will not convert.
+func parseInt(v string) (int, error) {
 	if !isNumeric(v) || strings.ContainsAny(v, ".,Ee") {
-		return 0, fmt.Errorf("edifact: element %d component %d: %w: %q", elem, comp, ErrNumeric, v)
+		return 0, fmt.Errorf("%w: %q", ErrNumeric, v)
 	}
 	n, err := strconv.Atoi(v)
 	if err != nil {
-		return 0, fmt.Errorf("edifact: element %d component %d: %w", elem, comp, err)
+		return 0, err
 	}
 	return n, nil
 }

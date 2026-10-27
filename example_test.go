@@ -219,6 +219,72 @@ func ExampleDateFormat() {
 	// true
 }
 
+// Fields reads many values and collects a warning for each one that will not
+// convert, located by message, segment and segment group.
+func ExampleFields() {
+	const plan = `UNA:+.? '
+UNB+UNOA:2+SENDER+RECIPIENT+260101:1200+REF1'
+UNH+M1+BAPLIE:D:95B:UN'
+BGM++BAY1+9'
+DTM+137:202601011200:203'
+LOC+147+0010204::5'
+MEA+WT++KGM:12000'
+EQD+CN+XXXU1234567+22G1'
+LOC+147+0010206::5'
+MEA+WT++KGM:8.500,5'
+EQD+CN+XXXU7654321+45G1'
+UNT+10+M1'
+UNZ+1+REF1'`
+
+	ix, err := edifact.ReadWithSpec(strings.NewReader(plan), bayplanSpec())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	m := ix.Message(1)
+
+	f := edifact.NewFields(m)
+	date := f.Time(m.Find("DTM", "137"), 1, 2, "document date")
+	fmt.Println(date.Format("2006-01-02 15:04"))
+	for _, cell := range m.FindAllGroups("SG2") {
+		where := cell.Find("LOC", "147").Component(2, 1)
+		fmt.Println(where, f.Float(cell.Find("MEA", "WT"), 3, 2, "weight"))
+	}
+	for _, d := range f.Diagnostics {
+		fmt.Println(d)
+	}
+	// Output:
+	// 2026-01-01 12:00
+	// 0010204 12000
+	// 0010206 0
+	// warning: message 1 (M1), segment 8, /SG2/MEA+WT: weight: element 3 component 2: not a valid EDIFACT numeric value: "8.500,5"
+}
+
+// Addf records a problem the caller finds, such as a value that is missing
+// where another makes it necessary.
+func ExampleFields_Addf() {
+	ix, err := edifact.ReadWithSpec(strings.NewReader(bayplan), bayplanSpec())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	m := ix.Message(1)
+
+	f := edifact.NewFields(m)
+	for _, cell := range m.FindAllGroups("SG2") {
+		loc := cell.Find("LOC", "147")
+		if cell.Find("LOC", "83") == nil {
+			f.Addf(loc, "cell %s: no place of delivery", loc.Component(2, 1))
+		}
+	}
+	for _, d := range f.Diagnostics {
+		fmt.Println(d)
+	}
+	// Output:
+	// warning: message 1 (M1), segment 4, /SG2/LOC+147: cell 0010204: no place of delivery
+	// warning: message 1 (M1), segment 9, /SG2/LOC+147: cell 0010206: no place of delivery
+}
+
 // Float accepts a dot or a comma as the decimal mark, and rejects anything
 // ISO 9735 does not allow as a number.
 func ExampleSegment_Float() {

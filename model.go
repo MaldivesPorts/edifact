@@ -35,6 +35,8 @@ type Message struct {
 	header *Segment
 	// group is nil when the message is not in a functional group.
 	group *FunctionalGroup
+	// ix is the interchange holding the message.
+	ix *Interchange
 
 	// segments is the sole storage and carries write order.
 	segments []*Segment
@@ -93,7 +95,7 @@ func (ix *Interchange) AddMessage(k Key) *Message {
 // AddMessageTo appends a message in functional group g whose UNH names k, and
 // returns it. A nil g adds the message outside any functional group.
 func (ix *Interchange) AddMessageTo(g *FunctionalGroup, k Key) *Message {
-	m := &Message{header: &Segment{Tag: "UNH"}, group: g}
+	m := &Message{header: &Segment{Tag: "UNH"}, group: g, ix: ix}
 	m.SetKey(k)
 	ix.messages = append(ix.messages, m)
 	return m

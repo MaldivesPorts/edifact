@@ -100,7 +100,7 @@ func (a *assembler) add(s *Segment) error {
 		if a.msg != nil {
 			return fmt.Errorf("%w: UNH inside an open message", ErrUnexpected)
 		}
-		a.msg = &Message{header: s, group: a.group}
+		a.msg = &Message{header: s, group: a.group, ix: a.ix}
 		a.ix.messages = append(a.ix.messages, a.msg)
 		a.inGroup++
 		a.msgCount++

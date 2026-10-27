@@ -59,6 +59,28 @@
 // can attach the right zone. [Segment.TimeRange] and [ParseTimeRange] read the
 // formats that name a period.
 //
+// # Reading many values
+//
+// [Fields] reads values the way the typed accessors do, but records a warning
+// for each value that will not convert instead of returning an error. A caller
+// can read every value it needs and handle the problems once:
+//
+//	f := edifact.NewFields(m)
+//	date := f.Time(m.Find("DTM", "137"), 1, 2, "document date")
+//	for _, cell := range m.FindAllGroups("SG2") {
+//		weight := f.Float(cell.Find("MEA", "WT"), 3, 2, "weight")
+//		// ...
+//	}
+//	for _, d := range f.Diagnostics {
+//		log.Println(d)
+//	}
+//
+// An absent segment or an empty position gives the zero value and records
+// nothing. Each warning is a [Diagnostic] naming the message, the segment and
+// its segment groups, followed by the caller's label for the value.
+// [Fields.Addf] records a problem only the caller can see, such as one value
+// missing where another makes it necessary.
+//
 // # Filler
 //
 // Read skips whitespace, control characters such as STX and ETX, and a UTF-8
@@ -92,7 +114,8 @@
 //   - every problem a specification finds
 //
 // Each [Diagnostic] gives its [Severity], the message it concerns and the
-// segment.
+// segment. [Fields] produces diagnostics of the same type for values that will
+// not convert.
 //
 // # Read options
 //
