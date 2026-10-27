@@ -82,28 +82,6 @@
 // [Fields.Addf] records a problem only the caller can see, such as one value
 // missing where another makes it necessary.
 //
-// # Reading into and writing from types
-//
-// A type that implements [Unmarshaler] reads itself from a message, and one
-// that implements [Marshaler] writes itself into one. A type may implement
-// either or both. Its methods choose every segment, code and format, so the
-// mapping stays in the caller's code:
-//
-//	func (h *Header) UnmarshalEDIFACT(m *edifact.Message, f *edifact.Fields) error {
-//		h.Number = m.Find("BGM", "").Element(2)
-//		h.Date = f.Time(m.Find("DTM", "137"), 1, 2, "document date")
-//		return nil
-//	}
-//
-//	func (h Header) MarshalEDIFACT(m *edifact.Message) error {
-//		m.Add("BGM", "", h.Number, "9")
-//		return m.Add("DTM", "137").SetTime(1, 2, h.Date, edifact.FormatCCYYMMDDHHMM)
-//	}
-//
-// [Unmarshal] calls UnmarshalEDIFACT with a [Fields] located in the message
-// and returns the diagnostics it collected. [Marshal] calls MarshalEDIFACT.
-// Write with a registry then checks the result against its spec.
-//
 // # Filler
 //
 // Read skips whitespace, control characters such as STX and ETX, and a UTF-8
@@ -289,6 +267,28 @@
 //     error. Default: [Error].
 //   - [FitCharset] converts characters outside the charset where it can, rather
 //     than refusing them. Default: off.
+//
+// # Reading into and writing from types
+//
+// A type that implements [Unmarshaler] reads itself from a message, and one
+// that implements [Marshaler] writes itself into one. A type may implement
+// either or both. Its methods choose every segment, code and format, so the
+// mapping stays in the caller's code:
+//
+//	func (h *Header) UnmarshalEDIFACT(m *edifact.Message, f *edifact.Fields) error {
+//		h.Number = m.Find("BGM", "").Element(2)
+//		h.Date = f.Time(m.Find("DTM", "137"), 1, 2, "document date")
+//		return nil
+//	}
+//
+//	func (h Header) MarshalEDIFACT(m *edifact.Message) error {
+//		m.Add("BGM", "", h.Number, "9")
+//		return m.Add("DTM", "137").SetTime(1, 2, h.Date, edifact.FormatCCYYMMDDHHMM)
+//	}
+//
+// [Unmarshal] calls UnmarshalEDIFACT with a [Fields] located in the message
+// and returns the diagnostics it collected. [Marshal] calls MarshalEDIFACT.
+// Write with a registry then checks the result against its spec.
 //
 // # Reading and writing back
 //

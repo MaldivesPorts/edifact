@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.3.0 (2026-10-27)
+
+### Changed (breaking)
+
+- `Segment.SetTime`, `Segment.TimeIn`, `ParseTime` and `ParseTimeRange` take the format as a `DateFormat` instead of a `string`. Use either the provided constants, or convert with `DateFormat(code)`.
+
+### Added
+
+- `DateFormat`, with a constant for each supported code list 2379 format, named after its layout, such as `FormatCCYYMMDDHHMM` for 203.
+- `Fields`, which reads typed values from a message's segments and records a `Diagnostic` for each value that will not convert, with `Fields.Addf` for additional problems the caller finds.
+- `Unmarshaler` (interface) and `Unmarshal`, for a struct that reads itself from a message.
+- `Marshaler` (interface) and `Marshal`, for a struct that writes itself into a message.
+- `ErrNoMessage`, from `Unmarshal` and `Marshal` given a nil message.
+- `Diagnostic.Err`, the conversion error behind a diagnostic from `Fields`, and nil for every other diagnostic.
+- `Diagnostic.String` leaves out the location when a diagnostic names no message, segment or tag.
+
 ## v0.2.1 (2026-10-20)
 
 Documentation only.
